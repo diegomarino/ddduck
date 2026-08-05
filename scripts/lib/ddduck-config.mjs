@@ -8,10 +8,13 @@ export const defaultConfigIgnore = Object.freeze(["vendor", "target", "build", "
 export function findRepositoryRoot(startPath = process.cwd()) {
   let current = path.resolve(startPath);
   if (existsSync(current) && !lstatSync(current).isDirectory()) current = path.dirname(current);
+  // The adjusted starting directory is the fallback when no .git ancestor exists,
+  // so a file startPath never leaks back out as if it were a directory.
+  const fallback = current;
   while (true) {
     if (existsSync(path.join(current, ".git"))) return current;
     const parent = path.dirname(current);
-    if (parent === current) return path.resolve(startPath);
+    if (parent === current) return fallback;
     current = parent;
   }
 }
