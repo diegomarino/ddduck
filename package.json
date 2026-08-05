@@ -1,6 +1,6 @@
 {
   "name": "ddduck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An opinionated DDD framework for authoring, validating, and visualizing machine-readable product-spec models.",
   "keywords": [
     "ddd",
