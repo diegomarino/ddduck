@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/fr-to-code-audit.schema.json",
+  "description": "This standard JSON Schema validates record structure. verifyFrToCodeAudit is the normative semantic validator for within-record constraints, including unique source IDs and anchor endLine >= startLine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "id",
+    "sources",
+    "requirement",
+    "coverage",
+    "verdict",
+    "productionAnchors",
+    "testAnchors",
+    "reviewerDisposition"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "FrToCodeAudit" },
+    "id": { "$ref": "#/$defs/nonEmptyString" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "requirement": { "$ref": "#/$defs/requirement" },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "verdict": { "enum": ["realized-and-tested", "realized-untested", "unrealized"] },
+    "productionAnchors": { "type": "array", "items": { "$ref": "#/$defs/anchor" } },
+    "testAnchors": { "type": "array", "items": { "$ref": "#/$defs/anchor" } },
+    "reviewerDisposition": { "enum": ["accepted", "rejected"] }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "revision"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "repository": { "$ref": "#/$defs/nonEmptyString" },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "sourcePath", "id", "qualifier"],
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "sourcePath": { "$ref": "#/$defs/nonEmptyString" },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "qualifier": { "$ref": "#/$defs/nonEmptyString" },
+        "tracedGuarantee": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["includes", "excludes"],
+      "properties": {
+        "includes": { "$ref": "#/$defs/nonEmptyStrings" },
+        "excludes": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "nonEmptyStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "path", "startLine", "endLine"],
+      "properties": {
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

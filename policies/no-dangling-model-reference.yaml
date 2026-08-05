@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: PolicySpec
+id: policy:no-dangling-model-reference
+name: No Dangling Model Reference
+condition: Every declared product reference resolves.
+implementation:
+  checker: check-model
+  check: no-dangling-model-reference

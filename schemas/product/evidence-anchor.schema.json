@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/evidence-anchor.schema.json",
+  "$defs": {
+    "guaranteeReferenceArray": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+-(?:INV|AC)-[0-9]+$" },
+      "uniqueItems": true
+    },
+    "guaranteeReferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requires"],
+      "properties": { "requires": { "$ref": "#/$defs/guaranteeReferenceArray" } }
+    },
+    "evidenceAnchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "anchor", "role"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "anchor": { "type": "string", "minLength": 1 },
+          "role": { "enum": ["source", "decision", "verification"] }
+        }
+      }
+    }
+  }
+}

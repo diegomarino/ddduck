@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:model-reference
+model: model:ddduck
+ownerDomain: domain:documentation
+name: Model Reference
+purpose: Cite a canonical model, domain, concept, relationship, decision, or
+  rule ID from documentation.
+decisions:
+  - ADR-004

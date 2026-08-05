@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:rule-spec
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Rule Spec
+purpose: Describe a canonical YAML policy rule that executable tooling can enforce.
+decisions:
+  - ADR-003

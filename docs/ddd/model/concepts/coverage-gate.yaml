@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:coverage-gate
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Coverage Gate
+purpose: Decide whether required model and guarantee coverage is sufficient for
+  a change.
+decisions:
+  - ADR-001

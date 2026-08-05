@@ -1,0 +1,32 @@
+# OS
+.DS_Store
+.worktrees/
+
+# Node
+node_modules/
+*.log
+
+# npm packaging / release tooling
+.npm-cache/
+*.tgz
+
+# Internal tooling / session state (never publish)
+.superpowers/
+.playwright-mcp/
+.remember/
+.gastown-ignore
+
+# Internal process artifacts (not published)
+/notes.md
+/docs/audits/
+/docs/superpowers/plans/
+/docs/superpowers/specs/
+
+# Never commit production data / databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+.db-dump/prod-snapshot.db
+.db-dump/*.csv
+.db-dump/sanitized-samples.json

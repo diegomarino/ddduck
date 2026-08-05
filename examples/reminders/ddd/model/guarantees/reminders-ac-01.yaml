@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: REMINDERS-AC-01
+model: model:members-reminders
+ownerDomain: domain:reminders
+classification: acceptance-criterion
+statement: Creating a valid reminder makes it available to its assigned member.
+status: active

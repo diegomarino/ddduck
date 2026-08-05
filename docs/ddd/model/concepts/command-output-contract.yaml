@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:command-output-contract
+model: model:ddduck
+ownerDomain: domain:tooling-runtime
+name: Command Output Contract
+purpose: Define when tooling commands may write human-readable output to stdout
+  or stderr.
+decisions:
+  - ADR-003

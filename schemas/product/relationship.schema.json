@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/relationship.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "from", "to", "relationshipType", "mode", "ownedBy"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "Relationship" },
+    "id": { "type": "string", "pattern": "^rel:[a-z0-9][a-z0-9-]*$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "from": { "type": "string", "minLength": 1 },
+    "to": { "type": "string", "minLength": 1 },
+    "relationshipType": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "minLength": 1 },
+    "ownedBy": { "type": "string", "pattern": "^domain:" },
+    "description": { "type": "string" },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "decisions": { "type": "array", "items": { "type": "string", "pattern": "^ADR-[0-9]{3}$" }, "uniqueItems": true }
+  }
+}

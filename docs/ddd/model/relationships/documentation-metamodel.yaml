@@ -1,0 +1,18 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:documentation-metamodel
+model: model:ddduck
+from: domain:documentation
+to: domain:metamodel
+relationshipType: reads
+mode: verified-view
+description: Documentation reads canonical model node definitions when
+  explaining structure, ownership, and relationships.
+ownedBy: domain:documentation
+constraints:
+  - Documentation may explain structural facts, but it does not own canonical
+    model node definitions.
+  - Structural documentation claims should cite model IDs or be generated from
+    canonical model data.
+decisions:
+  - ADR-004

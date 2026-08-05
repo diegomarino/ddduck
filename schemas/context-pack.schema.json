@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/context-pack.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "query", "rootModelId", "snapshot", "result", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "query": { "$ref": "#/$defs/query" },
+    "rootModelId": { "type": "string", "minLength": 1 },
+    "snapshot": { "$ref": "#/$defs/snapshot" },
+    "result": { "$ref": "#/$defs/result" },
+    "diagnostics": { "type": "array" }
+  },
+  "$defs": {
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "ids", "history"],
+      "properties": {
+        "operation": { "const": "context" },
+        "ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "history": { "const": false }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "sourceDigest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "sourceDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected", "edges", "neighbors"],
+      "properties": {
+        "selected": { "type": "array", "items": { "$ref": "#/$defs/selectedNode" } },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+        "neighbors": { "type": "array", "items": { "$ref": "#/$defs/neighbor" } }
+      }
+    },
+    "selectedNode": {
+      "type": "object",
+      "required": ["id", "kind", "sourcePath"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "sourcePath": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "from", "to", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "neighbor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "name", "sourcePath"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "name": { "type": ["string", "null"] },
+        "sourcePath": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

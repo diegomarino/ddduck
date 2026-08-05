@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:reminder-assigned-to-member
+model: model:members-reminders
+from: concept:reminder
+to: concept:member
+relationshipType: assigns
+mode: ordinary-flow
+description: A reminder designates a member.
+ownedBy: domain:reminders

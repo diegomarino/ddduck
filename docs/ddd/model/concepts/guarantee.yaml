@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:guarantee
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Guarantee
+purpose: State an expected property that traceability rules must preserve or verify.
+decisions:
+  - ADR-001

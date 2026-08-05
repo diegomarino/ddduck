@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:documentation-freshness
+model: model:ddduck
+ownerDomain: domain:documentation
+name: Documentation Freshness
+purpose: Indicate whether a documentation view reflects the current canonical
+  model state.
+decisions:
+  - ADR-004

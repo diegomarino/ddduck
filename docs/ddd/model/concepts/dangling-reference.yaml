@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:dangling-reference
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Dangling Reference
+purpose: Identify a model reference whose target node or decision cannot be resolved.
+decisions:
+  - ADR-001

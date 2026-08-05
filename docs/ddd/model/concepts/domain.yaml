@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:domain
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Domain
+purpose: Define an ownership boundary inside a model.
+decisions:
+  - ADR-001

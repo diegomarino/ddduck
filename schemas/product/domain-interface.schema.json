@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/domain-interface.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "ownerDomain", "name", "operationKind"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "DomainInterface" },
+    "id": { "type": "string", "pattern": "^interface:[a-z0-9][a-z0-9-]*$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "ownerDomain": { "type": "string", "pattern": "^domain:" },
+    "name": { "type": "string", "minLength": 1 },
+    "operationKind": { "enum": ["query", "command"] },
+    "guarantees": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferenceArray" },
+    "evidence": { "$ref": "evidence-anchor.schema.json#/$defs/evidenceAnchors" }
+  }
+}

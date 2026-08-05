@@ -1,0 +1,18 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:authoring-workflow
+model: model:ddduck
+name: Authoring Workflow
+purpose: Own the workflow for creating, reviewing, revising, and retiring model nodes.
+concepts:
+  - concept:decision-recording
+  - concept:model-node-lifecycle
+excludedConcepts:
+  - concept:node-kind
+  - concept:coverage-gate
+  - concept:documentation-view
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001
+  - ADR-004

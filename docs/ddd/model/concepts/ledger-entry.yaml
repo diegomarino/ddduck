@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:ledger-entry
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Ledger Entry
+purpose: Record traceability evidence, coverage, or change impact in an auditable form.
+decisions:
+  - ADR-001

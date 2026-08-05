@@ -1,0 +1,3 @@
+# Generated artifacts are byte-pinned and verified by the freshness checks. Force
+# LF so the comparison stays stable across platforms (e.g. core.autocrlf=true).
+**/generated/** text eol=lf

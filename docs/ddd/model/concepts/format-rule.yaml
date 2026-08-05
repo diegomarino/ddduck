@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:format-rule
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Format Rule
+purpose: Preserve stable representation and reproducible diffs as a model and
+  documentation policy.
+decisions:
+  - ADR-003

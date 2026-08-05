@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:traceability-metamodel
+model: model:ddduck
+from: domain:traceability
+to: domain:metamodel
+relationshipType: validates
+mode: graph-read
+description: Traceability validates that model nodes and edges defined under
+  Metamodel resolve and remain coherent.
+ownedBy: domain:traceability
+constraints:
+  - Traceability may reject invalid or incomplete graphs, but it does not define
+    model node kinds.
+decisions:
+  - ADR-001

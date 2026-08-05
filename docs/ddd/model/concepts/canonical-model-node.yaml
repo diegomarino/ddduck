@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:canonical-model-node
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Canonical Model Node
+purpose: Represent a single authoritative model element stored as canonical YAML.
+decisions:
+  - ADR-001

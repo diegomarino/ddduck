@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/domain.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "name", "purpose"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "Domain" },
+    "id": { "type": "string", "pattern": "^domain:[a-z0-9][a-z0-9-]*$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "name": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "concepts": { "type": "array", "items": { "type": "string", "pattern": "^concept:" }, "uniqueItems": true },
+    "excludedConcepts": { "type": "array", "items": { "type": "string", "pattern": "^concept:" }, "uniqueItems": true },
+    "interfaces": { "type": "array", "items": { "type": "string", "pattern": "^interface:" }, "uniqueItems": true },
+    "guarantees": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^(?:[A-Z][A-Z0-9-]+-(?:INV|AC)-[0-9]+)$" },
+      "uniqueItems": true
+    },
+    "decisions": { "type": "array", "items": { "type": "string", "pattern": "^ADR-[0-9]{3}$" }, "uniqueItems": true }
+  }
+}

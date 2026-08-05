@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: PolicySpec
+id: policy:documentation-model-reference-resolution
+name: Documentation Model Reference Resolution
+condition: Structural documentation references resolve in the canonical model.
+implementation:
+  checker: check-model
+  check: documentation-model-reference-resolution

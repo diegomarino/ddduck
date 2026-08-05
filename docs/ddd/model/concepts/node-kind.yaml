@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:node-kind
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Node Kind
+purpose: Define the recognized kind of a canonical model node.
+decisions:
+  - ADR-001

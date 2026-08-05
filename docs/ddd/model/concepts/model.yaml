@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:model
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Model
+purpose: Describe a whole system and contain its owned domains and relationships.
+decisions:
+  - ADR-001

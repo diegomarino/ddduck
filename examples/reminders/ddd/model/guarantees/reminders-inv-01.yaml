@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: REMINDERS-INV-01
+model: model:members-reminders
+ownerDomain: domain:reminders
+classification: invariant
+statement: A reminder can be assigned only to a member available in ordinary flows.
+status: active

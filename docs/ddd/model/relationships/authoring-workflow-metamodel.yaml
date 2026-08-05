@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:authoring-workflow-metamodel
+model: model:ddduck
+from: domain:authoring-workflow
+to: domain:metamodel
+relationshipType: uses
+mode: canonical-yaml-write
+description: Authoring Workflow creates and updates model nodes whose allowed
+  kinds and edge rules are defined by Metamodel.
+ownedBy: domain:authoring-workflow
+constraints:
+  - Authoring Workflow may create model nodes, but it does not define valid node
+    kinds.
+decisions:
+  - ADR-001

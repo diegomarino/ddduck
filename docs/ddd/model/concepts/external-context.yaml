@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:external-context
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: External Context
+purpose: Represent an integrated context whose rules are not owned by this model.
+decisions:
+  - ADR-001

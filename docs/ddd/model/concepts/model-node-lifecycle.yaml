@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:model-node-lifecycle
+model: model:ddduck
+ownerDomain: domain:authoring-workflow
+name: Model Node Lifecycle
+purpose: Govern how model nodes are introduced, changed, stabilized, deprecated,
+  and retired.
+decisions:
+  - ADR-001

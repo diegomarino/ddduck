@@ -1,0 +1,31 @@
+schemaVersion: "1"
+kind: Model
+id: model:ddduck
+name: ddduck
+nameStatus: stable
+purpose: Define and verify an opinionated DDD framework for modeling systems,
+  tracing guarantees, and controlling change impact.
+domains:
+  - domain:metamodel
+  - domain:traceability
+  - domain:authoring-workflow
+  - domain:documentation
+  - domain:visualization-export
+  - domain:tooling-runtime
+useCases: []
+relationships:
+  - rel:authoring-workflow-metamodel
+  - rel:documentation-metamodel
+  - rel:traceability-metamodel
+  - rel:traceability-documentation
+  - rel:tooling-runtime-traceability
+  - rel:visualization-export-metamodel
+decisions:
+  - ADR-001
+  - ADR-002
+  - ADR-003
+  - ADR-004
+  - ADR-005
+  - ADR-006
+notes:
+  - ddduck is the stable framework name; the model ID is now fixed and should not change.

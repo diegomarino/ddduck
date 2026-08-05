@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:decision-recording
+model: model:ddduck
+ownerDomain: domain:authoring-workflow
+name: Decision Recording
+purpose: Capture durable architectural decisions and link them back to model nodes.
+decisions:
+  - ADR-001

@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:concept
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Concept
+purpose: Name a domain-owned idea that may later become a richer model node.
+decisions:
+  - ADR-001

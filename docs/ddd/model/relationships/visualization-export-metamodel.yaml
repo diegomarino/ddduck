@@ -1,0 +1,17 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:visualization-export-metamodel
+model: model:ddduck
+from: domain:visualization-export
+to: domain:metamodel
+relationshipType: reads
+mode: generated-export
+description: Visualization Export reads canonical model topology and emits
+  derived graph artifacts such as ContextFlow project JSON.
+ownedBy: domain:visualization-export
+constraints:
+  - Generated visualization files are never canonical.
+  - Manual edits in external visualization tools are not authoritative unless a
+    later ADR defines an import contract.
+decisions:
+  - ADR-001

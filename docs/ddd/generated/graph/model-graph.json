@@ -1,0 +1,762 @@
+{
+  "schemaVersion": "1",
+  "formatVersion": "final",
+  "modelId": "model:ddduck",
+  "modelName": "ddduck",
+  "nameStatus": "stable",
+  "generatedBy": "scripts/generate-graph.mjs",
+  "nodes": [
+    {
+      "id": "concept:canonical-model-node",
+      "kind": "Concept",
+      "name": "Canonical Model Node",
+      "ownershipKind": null,
+      "purpose": "Represent a single authoritative model element stored as canonical YAML.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:command-output-contract",
+      "kind": "Concept",
+      "name": "Command Output Contract",
+      "ownershipKind": null,
+      "purpose": "Define when tooling commands may write human-readable output to stdout or stderr.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:tooling-runtime"
+    },
+    {
+      "id": "concept:concept",
+      "kind": "Concept",
+      "name": "Concept",
+      "ownershipKind": null,
+      "purpose": "Name a domain-owned idea that may later become a richer model node.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:contextflow-project-json",
+      "kind": "Concept",
+      "name": "ContextFlow Project JSON",
+      "ownershipKind": null,
+      "purpose": "Represent the generated ContextFlow project artifact used for temporary visualization exports.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:visualization-export"
+    },
+    {
+      "id": "concept:coverage-gate",
+      "kind": "Concept",
+      "name": "Coverage Gate",
+      "ownershipKind": null,
+      "purpose": "Decide whether required model and guarantee coverage is sufficient for a change.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:dangling-reference",
+      "kind": "Concept",
+      "name": "Dangling Reference",
+      "ownershipKind": null,
+      "purpose": "Identify a model reference whose target node or decision cannot be resolved.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:decision-recording",
+      "kind": "Concept",
+      "name": "Decision Recording",
+      "ownershipKind": null,
+      "purpose": "Capture durable architectural decisions and link them back to model nodes.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:authoring-workflow"
+    },
+    {
+      "id": "concept:disposition",
+      "kind": "Concept",
+      "name": "Disposition",
+      "ownershipKind": null,
+      "purpose": "Record the lifecycle state or handling outcome of a guarantee, rule, or finding.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:documentation-freshness",
+      "kind": "Concept",
+      "name": "Documentation Freshness",
+      "ownershipKind": null,
+      "purpose": "Indicate whether a documentation view reflects the current canonical model state.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "concept:documentation-view",
+      "kind": "Concept",
+      "name": "Documentation View",
+      "ownershipKind": null,
+      "purpose": "Present model knowledge in human-readable prose, tables, diagrams, or generated pages.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "concept:domain",
+      "kind": "Concept",
+      "name": "Domain",
+      "ownershipKind": null,
+      "purpose": "Define an ownership boundary inside a model.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:external-context",
+      "kind": "Concept",
+      "name": "External Context",
+      "ownershipKind": null,
+      "purpose": "Represent an integrated context whose rules are not owned by this model.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:format-rule",
+      "kind": "Concept",
+      "name": "Format Rule",
+      "ownershipKind": null,
+      "purpose": "Preserve stable representation and reproducible diffs as a model and documentation policy.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:guarantee",
+      "kind": "Concept",
+      "name": "Guarantee",
+      "ownershipKind": null,
+      "purpose": "State an expected property that traceability rules must preserve or verify.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:ledger-entry",
+      "kind": "Concept",
+      "name": "Ledger Entry",
+      "ownershipKind": null,
+      "purpose": "Record traceability evidence, coverage, or change impact in an auditable form.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:lint-rule",
+      "kind": "Concept",
+      "name": "Lint Rule",
+      "ownershipKind": null,
+      "purpose": "Detect a policy, consistency, or model-coherence violation.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:model",
+      "kind": "Concept",
+      "name": "Model",
+      "ownershipKind": null,
+      "purpose": "Describe a whole system and contain its owned domains and relationships.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:model-node-lifecycle",
+      "kind": "Concept",
+      "name": "Model Node Lifecycle",
+      "ownershipKind": null,
+      "purpose": "Govern how model nodes are introduced, changed, stabilized, deprecated, and retired.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:authoring-workflow"
+    },
+    {
+      "id": "concept:model-reference",
+      "kind": "Concept",
+      "name": "Model Reference",
+      "ownershipKind": null,
+      "purpose": "Cite a canonical model, domain, concept, relationship, decision, or rule ID from documentation.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "concept:node-kind",
+      "kind": "Concept",
+      "name": "Node Kind",
+      "ownershipKind": null,
+      "purpose": "Define the recognized kind of a canonical model node.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:orphaned-node",
+      "kind": "Concept",
+      "name": "Orphaned Node",
+      "ownershipKind": null,
+      "purpose": "Identify a model node that is not reachable from the expected ownership or graph roots.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:quality-gate",
+      "kind": "Concept",
+      "name": "Quality Gate",
+      "ownershipKind": null,
+      "purpose": "Represent an executable aggregate check that must pass before accepting canonical changes.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:tooling-runtime"
+    },
+    {
+      "id": "concept:relationship",
+      "kind": "Concept",
+      "name": "Relationship",
+      "ownershipKind": null,
+      "purpose": "Connect domains or model nodes through explicit typed references.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:metamodel"
+    },
+    {
+      "id": "concept:rule-spec",
+      "kind": "Concept",
+      "name": "Rule Spec",
+      "ownershipKind": null,
+      "purpose": "Describe a canonical YAML policy rule that executable tooling can enforce.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:schema-validation",
+      "kind": "Concept",
+      "name": "Schema Validation",
+      "ownershipKind": null,
+      "purpose": "Prove that a model node conforms to its declared JSON Schema.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "concept:structural-claim",
+      "kind": "Concept",
+      "name": "Structural Claim",
+      "ownershipKind": null,
+      "purpose": "State a documentation assertion about model structure, ownership, relationships, decisions, or verification policy.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "concept:verified-model-view",
+      "kind": "Concept",
+      "name": "Verified Model View",
+      "ownershipKind": null,
+      "purpose": "Represent a documentation view whose structural claims are generated from or checked against canonical model nodes.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "domain:authoring-workflow",
+      "kind": "Domain",
+      "name": "Authoring Workflow",
+      "ownershipKind": null,
+      "purpose": "Own the workflow for creating, reviewing, revising, and retiring model nodes.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "domain:documentation",
+      "kind": "Domain",
+      "name": "Documentation",
+      "ownershipKind": null,
+      "purpose": "Own human-readable model views, explanations, and citations without owning structural model facts.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "domain:metamodel",
+      "kind": "Domain",
+      "name": "Metamodel",
+      "ownershipKind": null,
+      "purpose": "Define the kinds of nodes and edges that can exist in a ddduck model.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "domain:tooling-runtime",
+      "kind": "Domain",
+      "name": "Tooling Runtime",
+      "ownershipKind": null,
+      "purpose": "Own the executable tools that validate, assemble, and generate artifacts from the canonical model.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "domain:traceability",
+      "kind": "Domain",
+      "name": "Traceability",
+      "ownershipKind": null,
+      "purpose": "Own the rules that prove model completeness, coherence, and guarantee lifecycle coverage.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "domain:visualization-export",
+      "kind": "Domain",
+      "name": "Visualization Export",
+      "ownershipKind": null,
+      "purpose": "Own generated exports that adapt canonical model data for external visualization tools.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "model:ddduck",
+      "kind": "Model",
+      "name": "ddduck",
+      "ownershipKind": null,
+      "purpose": "Define and verify an opinionated DDD framework for modeling systems, tracing guarantees, and controlling change impact.",
+      "model": null,
+      "ownerDomain": null
+    },
+    {
+      "id": "rel:authoring-workflow-metamodel",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Authoring Workflow creates and updates model nodes whose allowed kinds and edge rules are defined by Metamodel.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:authoring-workflow"
+    },
+    {
+      "id": "rel:documentation-metamodel",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Documentation reads canonical model node definitions when explaining structure, ownership, and relationships.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:documentation"
+    },
+    {
+      "id": "rel:tooling-runtime-traceability",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Tooling Runtime executes traceability checks and reports validation results for the canonical model.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:tooling-runtime"
+    },
+    {
+      "id": "rel:traceability-documentation",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Traceability validates that documentation references resolve and that verified views stay aligned with canonical model facts.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "rel:traceability-metamodel",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Traceability validates that model nodes and edges defined under Metamodel resolve and remain coherent.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "rel:visualization-export-metamodel",
+      "kind": "Relationship",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Visualization Export reads canonical model topology and emits derived graph artifacts such as ContextFlow project JSON.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:visualization-export"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge:owns|domain:authoring-workflow|concept:decision-recording",
+      "from": "domain:authoring-workflow",
+      "to": "concept:decision-recording",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:authoring-workflow",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:authoring-workflow|concept:model-node-lifecycle",
+      "from": "domain:authoring-workflow",
+      "to": "concept:model-node-lifecycle",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:authoring-workflow",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:documentation|concept:documentation-freshness",
+      "from": "domain:documentation",
+      "to": "concept:documentation-freshness",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:documentation",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:documentation|concept:documentation-view",
+      "from": "domain:documentation",
+      "to": "concept:documentation-view",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:documentation",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:documentation|concept:model-reference",
+      "from": "domain:documentation",
+      "to": "concept:model-reference",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:documentation",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:documentation|concept:structural-claim",
+      "from": "domain:documentation",
+      "to": "concept:structural-claim",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:documentation",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:documentation|concept:verified-model-view",
+      "from": "domain:documentation",
+      "to": "concept:verified-model-view",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:documentation",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:canonical-model-node",
+      "from": "domain:metamodel",
+      "to": "concept:canonical-model-node",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:concept",
+      "from": "domain:metamodel",
+      "to": "concept:concept",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:domain",
+      "from": "domain:metamodel",
+      "to": "concept:domain",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:external-context",
+      "from": "domain:metamodel",
+      "to": "concept:external-context",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:model",
+      "from": "domain:metamodel",
+      "to": "concept:model",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:node-kind",
+      "from": "domain:metamodel",
+      "to": "concept:node-kind",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:metamodel|concept:relationship",
+      "from": "domain:metamodel",
+      "to": "concept:relationship",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:metamodel",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:tooling-runtime|concept:command-output-contract",
+      "from": "domain:tooling-runtime",
+      "to": "concept:command-output-contract",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:tooling-runtime",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:tooling-runtime|concept:quality-gate",
+      "from": "domain:tooling-runtime",
+      "to": "concept:quality-gate",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:tooling-runtime",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:coverage-gate",
+      "from": "domain:traceability",
+      "to": "concept:coverage-gate",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:dangling-reference",
+      "from": "domain:traceability",
+      "to": "concept:dangling-reference",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:disposition",
+      "from": "domain:traceability",
+      "to": "concept:disposition",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:format-rule",
+      "from": "domain:traceability",
+      "to": "concept:format-rule",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:guarantee",
+      "from": "domain:traceability",
+      "to": "concept:guarantee",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:ledger-entry",
+      "from": "domain:traceability",
+      "to": "concept:ledger-entry",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:lint-rule",
+      "from": "domain:traceability",
+      "to": "concept:lint-rule",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:orphaned-node",
+      "from": "domain:traceability",
+      "to": "concept:orphaned-node",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:rule-spec",
+      "from": "domain:traceability",
+      "to": "concept:rule-spec",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|concept:schema-validation",
+      "from": "domain:traceability",
+      "to": "concept:schema-validation",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:visualization-export|concept:contextflow-project-json",
+      "from": "domain:visualization-export",
+      "to": "concept:contextflow-project-json",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:visualization-export",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:authoring-workflow",
+      "from": "model:ddduck",
+      "to": "domain:authoring-workflow",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:documentation",
+      "from": "model:ddduck",
+      "to": "domain:documentation",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:metamodel",
+      "from": "model:ddduck",
+      "to": "domain:metamodel",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:tooling-runtime",
+      "from": "model:ddduck",
+      "to": "domain:tooling-runtime",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:traceability",
+      "from": "model:ddduck",
+      "to": "domain:traceability",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|model:ddduck|domain:visualization-export",
+      "from": "model:ddduck",
+      "to": "domain:visualization-export",
+      "kind": "owns",
+      "label": "owns",
+      "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "rel:authoring-workflow-metamodel",
+      "from": "domain:authoring-workflow",
+      "to": "domain:metamodel",
+      "kind": "relationship",
+      "label": "uses",
+      "source": "rel:authoring-workflow-metamodel",
+      "relationshipType": "uses",
+      "mode": "canonical-yaml-write"
+    },
+    {
+      "id": "rel:documentation-metamodel",
+      "from": "domain:documentation",
+      "to": "domain:metamodel",
+      "kind": "relationship",
+      "label": "reads",
+      "source": "rel:documentation-metamodel",
+      "relationshipType": "reads",
+      "mode": "verified-view"
+    },
+    {
+      "id": "rel:tooling-runtime-traceability",
+      "from": "domain:tooling-runtime",
+      "to": "domain:traceability",
+      "kind": "relationship",
+      "label": "executes",
+      "source": "rel:tooling-runtime-traceability",
+      "relationshipType": "executes",
+      "mode": "checker-runtime"
+    },
+    {
+      "id": "rel:traceability-documentation",
+      "from": "domain:traceability",
+      "to": "domain:documentation",
+      "kind": "relationship",
+      "label": "validates",
+      "source": "rel:traceability-documentation",
+      "relationshipType": "validates",
+      "mode": "documentation-check"
+    },
+    {
+      "id": "rel:traceability-metamodel",
+      "from": "domain:traceability",
+      "to": "domain:metamodel",
+      "kind": "relationship",
+      "label": "validates",
+      "source": "rel:traceability-metamodel",
+      "relationshipType": "validates",
+      "mode": "graph-read"
+    },
+    {
+      "id": "rel:visualization-export-metamodel",
+      "from": "domain:visualization-export",
+      "to": "domain:metamodel",
+      "kind": "relationship",
+      "label": "reads",
+      "source": "rel:visualization-export-metamodel",
+      "relationshipType": "reads",
+      "mode": "generated-export"
+    }
+  ]
+}

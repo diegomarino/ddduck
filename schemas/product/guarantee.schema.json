@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/guarantee.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "ownerDomain", "classification", "statement", "status"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "Guarantee" },
+    "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+-(?:INV|AC)-[0-9]+$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "ownerDomain": { "type": "string", "pattern": "^domain:" },
+    "classification": { "enum": ["invariant", "acceptance-criterion"] },
+    "statement": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["active", "split", "retired"] },
+    "lifecycleDecision": { "type": "string", "pattern": "^ADR-[0-9]{3}$" },
+    "successors": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferenceArray" },
+    "ownershipHistory": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^domain:" },
+      "uniqueItems": true
+    },
+    "evidence": { "$ref": "evidence-anchor.schema.json#/$defs/evidenceAnchors" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "active" } } },
+      "then": { "not": { "required": ["lifecycleDecision"] } }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["split", "retired"] } } },
+      "then": { "required": ["lifecycleDecision"] }
+    }
+  ]
+}

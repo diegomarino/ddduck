@@ -1,0 +1,17 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:create-reminder
+model: model:members-reminders
+name: Create reminder
+goal: Create a reminder for a member who is available in ordinary flows.
+preconditions:
+  requires:
+    - MEMBERS-INV-01
+success:
+  preserves:
+    - MEMBERS-INV-01
+    - REMINDERS-INV-01
+  establishes:
+    - REMINDERS-AC-01
+interfaces:
+  - interface:create-reminder

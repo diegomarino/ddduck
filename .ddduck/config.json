@@ -1,0 +1,5 @@
+{
+  "schemaVersion": "1",
+  "productRoot": "docs/ddd",
+  "ignore": ["vendor", "target", "build", "dist", "__pycache__"]
+}

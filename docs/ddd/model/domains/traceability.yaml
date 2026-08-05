@@ -1,0 +1,29 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:traceability
+model: model:ddduck
+name: Traceability
+purpose: Own the rules that prove model completeness, coherence, and guarantee
+  lifecycle coverage.
+concepts:
+  - concept:guarantee
+  - concept:ledger-entry
+  - concept:disposition
+  - concept:coverage-gate
+  - concept:dangling-reference
+  - concept:orphaned-node
+  - concept:schema-validation
+  - concept:lint-rule
+  - concept:rule-spec
+  - concept:format-rule
+excludedConcepts:
+  - concept:node-kind
+  - concept:contextflow-project-json
+  - concept:documentation-view
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001
+  - ADR-002
+  - ADR-003
+  - ADR-004

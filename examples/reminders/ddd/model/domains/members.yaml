@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:members
+model: model:members-reminders
+name: Members
+purpose: Own the lifecycle and ordinary visibility of members.
+concepts:
+  - concept:member
+interfaces: []
+guarantees:
+  - MEMBERS-INV-00
+  - MEMBERS-INV-01
+decisions:
+  - ADR-002

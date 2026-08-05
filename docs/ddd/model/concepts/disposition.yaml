@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:disposition
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Disposition
+purpose: Record the lifecycle state or handling outcome of a guarantee, rule, or
+  finding.
+decisions:
+  - ADR-001

@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: MEMBERS-INV-01
+model: model:members-reminders
+ownerDomain: domain:members
+classification: invariant
+statement: An archived member is invisible and inassignable in ordinary flows.
+status: active

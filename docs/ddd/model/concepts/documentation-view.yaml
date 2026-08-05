@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:documentation-view
+model: model:ddduck
+ownerDomain: domain:documentation
+name: Documentation View
+purpose: Present model knowledge in human-readable prose, tables, diagrams, or
+  generated pages.
+decisions:
+  - ADR-004

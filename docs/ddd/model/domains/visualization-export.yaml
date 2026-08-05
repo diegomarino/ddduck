@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:visualization-export
+model: model:ddduck
+name: Visualization Export
+purpose: Own generated exports that adapt canonical model data for external
+  visualization tools.
+concepts:
+  - concept:contextflow-project-json
+excludedConcepts:
+  - concept:canonical-model-node
+  - concept:coverage-gate
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001

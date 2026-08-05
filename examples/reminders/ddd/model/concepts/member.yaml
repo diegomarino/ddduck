@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:member
+model: model:members-reminders
+ownerDomain: domain:members
+name: Member
+purpose: Represent a member whose lifecycle determines ordinary visibility and assignability.

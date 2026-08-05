@@ -1,0 +1,22 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:metamodel
+model: model:ddduck
+name: Metamodel
+purpose: Define the kinds of nodes and edges that can exist in a ddduck model.
+concepts:
+  - concept:model
+  - concept:domain
+  - concept:relationship
+  - concept:external-context
+  - concept:concept
+  - concept:canonical-model-node
+  - concept:node-kind
+excludedConcepts:
+  - concept:coverage-gate
+  - concept:contextflow-project-json
+  - concept:documentation-view
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001

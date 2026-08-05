@@ -1,0 +1,15 @@
+schemaVersion: "1"
+kind: Model
+id: model:members-reminders
+name: Members and Reminders
+purpose: Define member lifecycle and reminder creation contracts.
+domains:
+  - domain:members
+  - domain:reminders
+useCases:
+  - use-case:create-reminder
+relationships:
+  - rel:reminder-assigned-to-member
+decisions:
+  - ADR-001
+  - ADR-002

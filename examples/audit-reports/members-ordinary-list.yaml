@@ -1,0 +1,44 @@
+schemaVersion: "1"
+kind: FrToCodeAudit
+id: audit:fr-005-ordinary-member-list
+sources:
+  - id: source:example-app
+    repository: git@github.com:example/example-app.git
+    revision: dd4a2aa5a1e11c5b84e1b7798e49bb3e3acd69ef
+requirement:
+  sourceId: source:example-app
+  sourcePath: specs/members/spec.md
+  id: FR-005
+  qualifier: ordinary-member-list
+  tracedGuarantee: MEMBERS-INV-05
+coverage:
+  includes:
+    - Default GET /api/members list returns active members only
+  excludes:
+    - Member pickers
+    - Assignment and recipient targets
+    - Admin archived-member management tab
+verdict: realized-and-tested
+productionAnchors:
+  - sourceId: source:example-app
+    path: src/server/modules/members/referential.ts
+    startLine: 21
+    endLine: 26
+  - sourceId: source:example-app
+    path: src/server/modules/members/index.ts
+    startLine: 337
+    endLine: 339
+  - sourceId: source:example-app
+    path: src/server/modules/members/index.ts
+    startLine: 420
+    endLine: 423
+  - sourceId: source:example-app
+    path: src/server/routes/members.ts
+    startLine: 25
+    endLine: 29
+testAnchors:
+  - sourceId: source:example-app
+    path: tests/boundary/member-list-lifecycle.test.ts
+    startLine: 54
+    endLine: 89
+reviewerDisposition: accepted

@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:relationship
+model: model:ddduck
+ownerDomain: domain:metamodel
+name: Relationship
+purpose: Connect domains or model nodes through explicit typed references.
+decisions:
+  - ADR-001

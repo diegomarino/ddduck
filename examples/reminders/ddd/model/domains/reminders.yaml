@@ -1,0 +1,13 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:reminders
+model: model:members-reminders
+name: Reminders
+purpose: Create reminders for members who remain available in ordinary flows.
+concepts:
+  - concept:reminder
+interfaces:
+  - interface:create-reminder
+guarantees:
+  - REMINDERS-INV-01
+  - REMINDERS-AC-01

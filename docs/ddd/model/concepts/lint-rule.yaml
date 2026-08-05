@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:lint-rule
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Lint Rule
+purpose: Detect a policy, consistency, or model-coherence violation.
+decisions:
+  - ADR-003

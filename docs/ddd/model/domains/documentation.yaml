@@ -1,0 +1,23 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:documentation
+model: model:ddduck
+name: Documentation
+purpose: Own human-readable model views, explanations, and citations without
+  owning structural model facts.
+concepts:
+  - concept:documentation-view
+  - concept:verified-model-view
+  - concept:model-reference
+  - concept:structural-claim
+  - concept:documentation-freshness
+excludedConcepts:
+  - concept:canonical-model-node
+  - concept:lint-rule
+  - concept:rule-spec
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001
+  - ADR-002
+  - ADR-004

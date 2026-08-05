@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:contextflow-project-json
+model: model:ddduck
+ownerDomain: domain:visualization-export
+name: ContextFlow Project JSON
+purpose: Represent the generated ContextFlow project artifact used for temporary
+  visualization exports.
+decisions:
+  - ADR-001

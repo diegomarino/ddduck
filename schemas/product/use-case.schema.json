@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/use-case.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "name", "goal", "preconditions", "success"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "UseCase" },
+    "id": { "type": "string", "pattern": "^use-case:[a-z0-9][a-z0-9-]*$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "name": { "type": "string", "minLength": 1 },
+    "goal": { "type": "string", "minLength": 1 },
+    "preconditions": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferences" },
+    "success": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preserves", "establishes"],
+      "properties": {
+        "preserves": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferenceArray" },
+        "establishes": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferenceArray" }
+      }
+    },
+    "interfaces": { "type": "array", "items": { "type": "string", "pattern": "^interface:" }, "uniqueItems": true },
+    "evidence": { "$ref": "evidence-anchor.schema.json#/$defs/evidenceAnchors" }
+  }
+}

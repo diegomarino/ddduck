@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:reminder
+model: model:members-reminders
+ownerDomain: domain:reminders
+name: Reminder
+purpose: Represent a reminder that is created for a designated member.

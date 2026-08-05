@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:verified-model-view
+model: model:ddduck
+ownerDomain: domain:documentation
+name: Verified Model View
+purpose: Represent a documentation view whose structural claims are generated
+  from or checked against canonical model nodes.
+decisions:
+  - ADR-004

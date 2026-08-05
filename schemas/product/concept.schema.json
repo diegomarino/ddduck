@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/product/concept.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "model", "ownerDomain", "name", "purpose"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "Concept" },
+    "id": { "type": "string", "pattern": "^concept:[a-z0-9][a-z0-9-]*$" },
+    "model": { "type": "string", "pattern": "^model:" },
+    "ownerDomain": { "type": "string", "pattern": "^domain:" },
+    "name": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "decisions": { "type": "array", "items": { "type": "string", "pattern": "^ADR-[0-9]{3}$" }, "uniqueItems": true }
+  }
+}

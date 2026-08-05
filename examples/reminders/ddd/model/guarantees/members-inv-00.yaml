@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Guarantee
+id: MEMBERS-INV-00
+model: model:members-reminders
+ownerDomain: domain:members
+classification: invariant
+statement: Every member remains visible and assignable in ordinary flows.
+status: retired
+lifecycleDecision: ADR-002

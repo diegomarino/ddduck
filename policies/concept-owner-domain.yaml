@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: PolicySpec
+id: policy:concept-owner-domain
+name: Concept Owner Domain
+condition: Each domain-owned product fact resolves to exactly one owner domain.
+implementation:
+  checker: check-model
+  check: concept-owner-domain

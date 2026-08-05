@@ -1,0 +1,19 @@
+schemaVersion: "1"
+kind: DomainInterface
+id: interface:create-reminder
+model: model:members-reminders
+ownerDomain: domain:reminders
+name: Create reminder
+operationKind: command
+guarantees:
+  - REMINDERS-INV-01
+evidence:
+  - path: decisions/ADR-001-reminder-contract.md
+    anchor: ADR-001
+    role: decision
+  - path: reference-evidence.md
+    anchor: Source
+    role: source
+  - path: reference-evidence.md
+    anchor: Verification
+    role: verification

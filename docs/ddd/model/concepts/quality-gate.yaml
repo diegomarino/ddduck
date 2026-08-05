@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:quality-gate
+model: model:ddduck
+ownerDomain: domain:tooling-runtime
+name: Quality Gate
+purpose: Represent an executable aggregate check that must pass before accepting
+  canonical changes.
+decisions:
+  - ADR-003

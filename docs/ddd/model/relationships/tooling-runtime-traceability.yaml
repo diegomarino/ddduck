@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:tooling-runtime-traceability
+model: model:ddduck
+from: domain:tooling-runtime
+to: domain:traceability
+relationshipType: executes
+mode: checker-runtime
+description: Tooling Runtime executes traceability checks and reports validation
+  results for the canonical model.
+ownedBy: domain:tooling-runtime
+constraints:
+  - Tooling Runtime implements checks; Traceability owns the meaning of coverage
+    and coherence.
+decisions:
+  - ADR-001

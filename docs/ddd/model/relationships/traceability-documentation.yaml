@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:traceability-documentation
+model: model:ddduck
+from: domain:traceability
+to: domain:documentation
+relationshipType: validates
+mode: documentation-check
+description: Traceability validates that documentation references resolve and
+  that verified views stay aligned with canonical model facts.
+ownedBy: domain:traceability
+constraints:
+  - Traceability owns the meaning of documentation drift checks.
+  - Documentation owns the wording and presentation of verified views.
+decisions:
+  - ADR-004

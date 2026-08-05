@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:orphaned-node
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Orphaned Node
+purpose: Identify a model node that is not reachable from the expected ownership
+  or graph roots.
+decisions:
+  - ADR-001

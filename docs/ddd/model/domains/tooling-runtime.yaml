@@ -1,0 +1,24 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:tooling-runtime
+model: model:ddduck
+name: Tooling Runtime
+purpose: Own the executable tools that validate, assemble, and generate
+  artifacts from the canonical model.
+concepts:
+  - concept:command-output-contract
+  - concept:quality-gate
+excludedConcepts:
+  - concept:guarantee
+  - concept:node-kind
+  - concept:contextflow-project-json
+  - concept:lint-rule
+  - concept:rule-spec
+  - concept:documentation-view
+  - concept:format-rule
+interfaces: []
+guarantees: []
+decisions:
+  - ADR-001
+  - ADR-002
+  - ADR-003

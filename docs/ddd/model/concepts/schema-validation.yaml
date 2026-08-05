@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:schema-validation
+model: model:ddduck
+ownerDomain: domain:traceability
+name: Schema Validation
+purpose: Prove that a model node conforms to its declared JSON Schema.
+decisions:
+  - ADR-002

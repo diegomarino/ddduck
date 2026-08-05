@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/policies/policy-spec.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "id", "name", "condition", "implementation"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "PolicySpec" },
+    "id": { "type": "string", "pattern": "^policy:[a-z0-9][a-z0-9-]*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "condition": { "type": "string", "minLength": 1 },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checker", "check"],
+      "properties": {
+        "checker": { "const": "check-model" },
+        "check": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

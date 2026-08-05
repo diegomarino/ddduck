@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:structural-claim
+model: model:ddduck
+ownerDomain: domain:documentation
+name: Structural Claim
+purpose: State a documentation assertion about model structure, ownership,
+  relationships, decisions, or verification policy.
+decisions:
+  - ADR-004
