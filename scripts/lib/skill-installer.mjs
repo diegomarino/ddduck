@@ -1,3 +1,14 @@
+/**
+ * Installer for the bundled update-ddduck-specs agent skill, behind `ddduck
+ * install skill`. Selects a host topology from the repository state (codex
+ * .agents/, claude-code .claude/, or shared via symlink), plans create,
+ * upgrade, or no-op against the canonical SKILL.md and the
+ * .ddduck/agent-skills.lock.json lock, and applies the plan with atomic
+ * writes plus rollback of everything touched on failure. Conflicting host
+ * state or a locally modified canonical file refuses with a nextAction
+ * naming the exact path to resolve.
+ */
+
 import {
   lstatSync,
   mkdirSync,
@@ -112,12 +123,22 @@ const installTopologies = [
   },
 ];
 
+/**
+ * Install (or upgrade) the bundled skill into a repository: load, plan, apply.
+ * @param {{repository: string, skillName: string, skillPath: string, packageVersion: string, operations?: object}} options - Repository root, skill identity, bundled asset path, and ddduck version for the lock.
+ * @returns {{action: "create"|"upgrade"|"no-op", skillSha256: string, canonicalPath: string, lockPath: string}} The installation result.
+ */
 export function installSkill(options) {
   const bundle = loadSkillBundle(options);
   const plan = planSkillInstall({ ...options, bundle });
   return applySkillInstall({ ...options, bundle, plan });
 }
 
+/**
+ * Read the bundled skill asset and compute its sha256.
+ * @param {{skillName: string, skillPath: string, operations?: object}} options - Skill name, SKILL.md path, and fs overrides for tests.
+ * @returns {{name: string, bytes: Buffer, sha256: string}} The loaded bundle.
+ */
 export function loadSkillBundle({ skillName, skillPath, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   if (pathState(skillPath, resolvedOperations).type !== "file") {
@@ -127,6 +148,13 @@ export function loadSkillBundle({ skillName, skillPath, operations = {} }) {
   return { name: skillName, bytes, sha256: sha256(bytes) };
 }
 
+/**
+ * Inspect the repository's lock, canonical file, and host adapters and decide
+ * the action: create, upgrade, or no-op — or throw on conflicting host state,
+ * an incomplete lock, or a locally modified canonical skill.
+ * @param {{repository: string, skillName: string, bundle: {sha256: string}, operations?: object}} options - Repository root, skill name, loaded bundle, and fs overrides.
+ * @returns {{action: string, paths: object, topology: object, adaptersToMaterialize: object[], writeCanonical: boolean}} The install plan for applySkillInstall.
+ */
 export function planSkillInstall({ repository, skillName, bundle, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   const root = path.resolve(repository);
@@ -149,13 +177,16 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
       canonical.type === "absent" &&
       resolvedOperations.readdirSync(paths.canonicalDirectory).length > 0
     ) {
-      throw new Error(`Conflicting canonical skill directory: ${paths.canonicalDirectory}`);
+      throw conflictingHostState(
+        `Conflicting canonical skill directory: ${paths.canonicalDirectory}`,
+        paths.canonicalDirectory,
+      );
     }
     if (canonical.type === "absent") {
       return createPlan({ paths, adapters, writeCanonical: true });
     }
     if (canonical.type !== "file" || sha256(resolvedOperations.readFileSync(paths.canonical)) !== bundle.sha256) {
-      throw new Error(`Conflicting canonical skill destination: ${paths.canonical}`);
+      throw conflictingHostState(`Conflicting canonical skill destination: ${paths.canonical}`, paths.canonical);
     }
     return createPlan({ paths, adapters, writeCanonical: false });
   }
@@ -178,6 +209,13 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
   };
 }
 
+/**
+ * Execute an install plan: atomically write the canonical skill, materialize
+ * host adapters, and write the lock; on failure roll back everything touched
+ * and report any recovery failures in the thrown error.
+ * @param {{packageVersion: string, bundle: {name: string, bytes: Buffer, sha256: string}, plan: object, operations?: object}} options - ddduck version for the lock, loaded bundle, plan from planSkillInstall, and fs overrides.
+ * @returns {{action: string, skillSha256: string, canonicalPath: string, lockPath: string}} The installation result.
+ */
 export function applySkillInstall({ packageVersion, bundle, plan, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   if (plan.action === "no-op") return installResult("no-op", bundle, plan);
@@ -347,7 +385,18 @@ function expectedAdapters(topology) {
 
 function conflictingHostAdapter({ adapter }, paths) {
   const label = adapter.host === "claude-code" ? "Claude Code" : adapter.host;
-  return new Error(`Conflicting ${label} adapter: ${paths.adapters[adapter.host]}`);
+  return conflictingHostState(
+    `Conflicting ${label} adapter: ${paths.adapters[adapter.host]}`,
+    paths.adapters[adapter.host],
+  );
+}
+
+// Host-state conflicts are environment failures, not input failures: name the
+// pre-existing path the user must resolve instead of the usage hint.
+function conflictingHostState(message, conflictingPath) {
+  const error = new Error(message);
+  error.nextAction = `Move ${conflictingPath} aside or remove it, then re-run ddduck install skill update-ddduck-specs.`;
+  return error;
 }
 
 function atomicWrite(destination, content, operations, touched) {
@@ -392,7 +441,11 @@ function restoreAfterFailure({ plan, originalCanonical, canonicalWritten, materi
 }
 
 function incompleteLock(lockPath) {
-  return new Error(`Incomplete or inconsistent skill lock: ${lockPath}`);
+  const error = new Error(`Incomplete or inconsistent skill lock: ${lockPath}`);
+  // Deleting the lock is safe: the next install rebuilds it from the repository
+  // state, and any canonical mismatch then surfaces as its own conflict.
+  error.nextAction = `Delete ${lockPath}, then re-run ddduck install skill update-ddduck-specs to rebuild it.`;
+  return error;
 }
 
 function locallyModifiedCanonical(canonicalPath) {

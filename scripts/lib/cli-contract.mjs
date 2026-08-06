@@ -1,3 +1,13 @@
+/**
+ * The shared CLI contract for every ddduck command surface: the usage-error
+ * type, the option/positional parser, the per-command --help text (including
+ * the documented exit codes: 0 success, 1 failure, 2 retryable busy), and the
+ * single-format error writer that always emits `Error: ...` plus a `Next:`
+ * action line. Consumed by ddduck.mjs, query-model.mjs, and
+ * audit-fr-to-code.mjs so agents can rely on one stable error shape.
+ */
+
+/** Invalid CLI input; may carry a nextAction line for the error writer. */
 export class CliUsageError extends Error {
   constructor(message, { nextAction } = {}) {
     super(message);
@@ -6,6 +16,14 @@ export class CliUsageError extends Error {
   }
 }
 
+/**
+ * Parse command arguments against a declared option/positional shape,
+ * supporting --name value and --name=value, boolean flags, repeatable
+ * options, and duplicate rejection.
+ * @param {string[]} args - Arguments after the command word.
+ * @param {{positionals?: {min?: number, max?: number, syntax?: string}, options?: Record<string, {value?: boolean, repeatable?: boolean}>}} [spec] - Accepted positional bounds and option definitions.
+ * @returns {{positionals: string[], options: Record<string, string|string[]|boolean>}} Parsed values (booleans default false, repeatables default []).
+ */
 export function parseCommandArgs(args, { positionals = {}, options = {} } = {}) {
   const minimum = positionals.min ?? 0;
   const maximum = positionals.max ?? minimum;
@@ -55,6 +73,11 @@ export function parseCommandArgs(args, { positionals = {}, options = {} } = {}) 
   return { positionals: values, options: parsed };
 }
 
+/**
+ * Render the --help text for one command, or the top-level command list.
+ * @param {string} [command] - Command name; unknown or absent yields the overview.
+ * @returns {string} The help text, newline-terminated.
+ */
 export function renderHelp(command) {
   const usage = {
     undefined: [
@@ -74,8 +97,8 @@ export function renderHelp(command) {
       "Syntax: ddduck check [--root <product-root>] [--base <previous-product-root>] [--docs-root <docs-root> ...] [--source-only]",
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); --base is unset; documentation references are checked inside the product root unless --docs-root replaces that scope; generated freshness is checked.",
       "Writes: nothing.",
-      "Success output: none.",
-      "Exit status: 0 on a valid fresh product or help; nonzero on invalid source, stale views, leftover interrupted-operation state, or invalid input.",
+      "Success output: none on standard output; when --root is omitted, one standard-error note names the validated root.",
+      "Exit status: 0 on a valid fresh product or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 on invalid source, stale views, leftover interrupted-operation state, or invalid input.",
       "JSON: unavailable; --json is not accepted.",
     ],
     generate: [
@@ -83,15 +106,15 @@ export function renderHelp(command) {
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); text output is used.",
       "Writes: all required generated docs and graph views after staged validation.",
       "Success output: one text result with the root and refreshed generated paths.",
-      "Exit status: 0 on publication or help; nonzero with no intended product changes on failure.",
+      "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],
     query: [
       "Syntax: ddduck query <node|neighbors|impact|anchors|spec|context> [options] [--json]",
-      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery) except context requires it; --history is false.",
+      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); --history is false.",
       "Writes: nothing.",
       "Success output: exactly one JSON query document.",
-      "Exit status: 0 on a resolved query or help; nonzero on invalid input, product, or selection.",
+      "Exit status: 0 on a resolved query or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 on invalid input, product, or selection.",
       "JSON: output is always JSON; --json is accepted and has no effect.",
       "Options: --id <model-node-id> (repeatable for context), --root <product-root>, --history.",
     ],
@@ -108,7 +131,7 @@ export function renderHelp(command) {
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); the next origin/classification serial is allocated.",
       "Writes: the new Guarantee, its owning Domain, and all generated views through staged publication.",
       "Success output: one text result with the allocated ID, root, canonical paths, and generated paths.",
-      "Exit status: 0 on publication or help; nonzero with no intended product changes on failure.",
+      "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],
     move: [
@@ -116,7 +139,7 @@ export function renderHelp(command) {
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery).",
       "Writes: the Guarantee, affected Domains, and all generated views through staged publication.",
       "Success output: one text result with affected IDs, root, canonical paths, and generated paths.",
-      "Exit status: 0 on publication or help; nonzero with no intended product changes on failure.",
+      "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],
     split: [
@@ -124,7 +147,7 @@ export function renderHelp(command) {
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery).",
       "Writes: the source Guarantee lifecycle state and all generated views through staged publication.",
       "Success output: one text result with affected IDs, root, canonical paths, and generated paths.",
-      "Exit status: 0 on publication or help; nonzero with no intended product changes on failure.",
+      "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],
     retire: [
@@ -132,7 +155,7 @@ export function renderHelp(command) {
       "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery).",
       "Writes: the Guarantee lifecycle state and all generated views through staged publication.",
       "Success output: one text result with affected IDs, root, canonical paths, and generated paths.",
-      "Exit status: 0 on publication or help; nonzero with no intended product changes on failure.",
+      "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],
     "audit-fr-to-code": [
@@ -142,6 +165,14 @@ export function renderHelp(command) {
   return `${(usage[command] ?? usage.undefined).join("\n")}\n`;
 }
 
+/**
+ * Format any error into the CLI contract shape: `Error: <message>` (multi-line
+ * diagnostics preserved) followed by a `Next: <action>` line, preferring the
+ * error's own nextAction over the caller's fallback.
+ * @param {unknown} error - The thrown error or value.
+ * @param {{nextAction?: string}} [options] - Fallback next action.
+ * @returns {string} The formatted error text (no trailing newline).
+ */
 export function formatCliError(error, { nextAction } = {}) {
   const message = error instanceof Error ? error.message : String(error);
   const action = error?.nextAction ?? nextAction ?? "Review the diagnostic, correct the input, and retry.";
@@ -156,7 +187,15 @@ export function formatCliError(error, { nextAction } = {}) {
   return [`Error: ${lines[0]}`, ...lines.slice(1), `Next: ${action}`].join("\n");
 }
 
+/**
+ * Write a formatted error to stderr and set the process exit code.
+ * @param {unknown} error - The thrown error or value.
+ * @param {{stderr?: {write: (chunk: string) => unknown}, nextAction?: string}} [options] - Stream override and fallback next action.
+ * @returns {void}
+ */
 export function writeCliError(error, { stderr = process.stderr, nextAction } = {}) {
   stderr.write(`${formatCliError(error, { nextAction })}\n`);
-  process.exitCode = 1;
+  // Exit 1 is the default failure code; an error may carry a distinct code
+  // (exit 2 marks the retryable busy case, see ProductBusyError).
+  process.exitCode = Number.isInteger(error?.exitCode) ? error.exitCode : 1;
 }

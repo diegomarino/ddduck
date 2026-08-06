@@ -1,7 +1,49 @@
+/**
+ * Implements `ddduck query context`: the context pack that returns the
+ * selected active nodes in full, every edge touching them, and summaries of
+ * the unselected endpoints, all under a sha256 source digest of the canonical
+ * YAML so consumers can detect drift. Also home to the shared sourceDigest
+ * helpers, shellQuote for copy-pasteable emitted commands, and the
+ * unknown-model-node error used across the query surface.
+ */
+
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+/**
+ * Quote a value for safe copy-paste into a shell. Emitted commands are copied
+ * into shells by humans and agents; roots with spaces or metacharacters must
+ * survive that round trip.
+ * @param {string} value - The path or argument to quote.
+ * @returns {string} The value, single-quoted unless already shell-safe.
+ */
+export function shellQuote(value) {
+  if (/^[A-Za-z0-9_\-./]+$/.test(value)) return value;
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+/**
+ * Build the error for an ID that names no model node. An unknown ID is a model
+ * failure, not a CLI-input failure: point the caller at the query that lists
+ * the valid node IDs instead of the usage hint.
+ * @param {{root: string}} product - The loaded query product.
+ * @param {string} id - The unresolved model node ID.
+ * @returns {Error} Error with a `query spec` nextAction.
+ */
+export function unknownModelNodeError(product, id) {
+  const error = new Error(`Unknown model node ${id}`);
+  error.nextAction = `Run ddduck query spec --root ${shellQuote(product.root)} to list model nodes.`;
+  return error;
+}
+
+/**
+ * Resolve a context pack for a set of selected node IDs: full selected nodes,
+ * direct edges, and neighbor summaries. Inactive guarantees cannot be selected.
+ * @param {{rootModelId: string, nodes: Map<string, object>, edges: object[], sourcePaths: Map<string, string>, sourceDigest: string, lifecycleRedirects: Map<string, object>}} product - The loaded query product.
+ * @param {string[]} selectedIds - Distinct model node IDs to select.
+ * @returns {object} The context pack document (schemaVersion, query, snapshot, result).
+ */
 export function resolveContextPack(product, selectedIds) {
   const ids = validateSelectedIds(product, selectedIds);
   const selectedSet = new Set(ids);
@@ -29,6 +71,12 @@ export function sourceDigest(root, sourcePaths) {
   return sourceDigestFromSources(sources);
 }
 
+/**
+ * Compute the canonical sha256 digest over already-read source files: paths
+ * sorted, each path and content NUL-separated.
+ * @param {Map<string, Buffer|string>} sources - Root-relative path to file bytes.
+ * @returns {string} Hex digest identifying this exact canonical snapshot.
+ */
 export function sourceDigestFromSources(sources) {
   const hash = createHash("sha256");
   for (const relativePath of [...sources.keys()].sort(byString)) {
@@ -64,7 +112,7 @@ function validateSelectedIds(product, selectedIds) {
     if (lifecycleRedirect) {
       throw new Error(`Cannot select inactive model node ${id} (${lifecycleRedirect.status})`);
     }
-    throw new Error(`Unknown model node ${id}`);
+    throw unknownModelNodeError(product, id);
   }
   return ids;
 }

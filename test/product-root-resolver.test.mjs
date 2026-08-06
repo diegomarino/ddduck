@@ -80,6 +80,22 @@ test("a single shaped-but-invalid root resolves so the command's own validation 
   assert.equal(resolveProductRoot({ cwd: repo }), realpathSync(solo));
 });
 
+test("a sole example candidate outside the cwd is named instead of reported as not found", () => {
+  const repo = makeRepo();
+  const example = makeProduct(repo, "examples/reminders/ddd", "model:example");
+
+  assert.throws(
+    () => resolveProductRoot({ cwd: repo }),
+    (error) => {
+      assert.match(error.message, /No ddduck product root selected/);
+      assert.ok(error.message.includes(realpathSync(example)), error.message);
+      assert.match(error.message, /example candidate/);
+      assert.match(error.message, /--root/);
+      return true;
+    },
+  );
+});
+
 test("test fixtures are ignored unless explicitly selected", () => {
   const repo = makeRepo();
   const fixture = makeProduct(repo, "test/fixtures/product/ddd", "model:fixture");

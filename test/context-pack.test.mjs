@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -215,18 +215,42 @@ test("query context emits the sorted pack for repeatable selected IDs", () => {
   assert.match(result.stdout, /\n$/);
 });
 
-test("query context requires an explicit root and selected IDs, with --json optional", () => {
+test("query context requires selected IDs, with --root and --json optional", () => {
   const withoutJson = runDdd(["query", "context", "--id", "domain:reminders", "--root", provingFixture]);
   assert.equal(withoutJson.status, 0, withoutJson.stderr);
   assert.equal(JSON.parse(withoutJson.stdout).query.operation, "context");
 
-  const missingRoot = runDdd(["query", "context", "--id", "domain:reminders", "--json"]);
-  assert.notEqual(missingRoot.status, 0);
-  assert.match(missingRoot.stderr, /query context requires --root <product-root>/);
-
   const missingId = runDdd(["query", "context", "--root", provingFixture, "--json"]);
   assert.notEqual(missingId.status, 0);
   assert.match(missingId.stderr, /query context requires --id <model-node-id>/);
+});
+
+test("query context resolves the product root like its sibling queries when --root is omitted", () => {
+  const repo = mkdtempSync(path.join(tmpdir(), "ddduck-context-resolved-root-"));
+  cpSync(provingFixture, path.join(repo, "docs", "ddd"), { recursive: true });
+  mkdirSync(path.join(repo, ".ddduck"));
+  writeFileSync(
+    path.join(repo, ".ddduck", "config.json"),
+    `${JSON.stringify({ schemaVersion: "1", productRoot: "docs/ddd" }, null, 2)}\n`,
+  );
+
+  const resolved = spawnSync(process.execPath, [cli, "query", "context", "--id", "domain:reminders", "--json"], {
+    cwd: repo,
+    encoding: "utf8",
+  });
+  assert.equal(resolved.status, 0, resolved.stderr);
+
+  const explicit = runDdd([
+    "query",
+    "context",
+    "--id",
+    "domain:reminders",
+    "--root",
+    path.join(repo, "docs", "ddd"),
+    "--json",
+  ]);
+  assert.equal(explicit.status, 0, explicit.stderr);
+  assert.equal(resolved.stdout, explicit.stdout);
 });
 
 test("query context rejects history", () => {

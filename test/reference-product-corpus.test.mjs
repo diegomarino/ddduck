@@ -80,6 +80,7 @@ test("reference product query spec is rooted at the explicit corpus", () => {
     { path: "generated/docs/model-overview.md", freshness: "fresh" },
     { path: "generated/graph/model-graph.json", freshness: "fresh" },
     { path: "generated/graph/model-graph.ndjson", freshness: "fresh" },
+    { path: "generated/graph/model-graph.svg", freshness: "fresh" },
   ]);
 });
 

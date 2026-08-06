@@ -104,6 +104,11 @@ test("check rejects stale generated views unless source-only is requested", () =
   assert.doesNotMatch(staleDocs.stderr, /npm run/);
   assert.match(staleDocs.stderr, /Next: Run ddduck generate --root /);
   assert.doesNotMatch(staleDocs.stderr, /correct the input/);
+  assert.equal(
+    staleDocs.stderr.match(/run ddduck generate --root /gi).length,
+    1,
+    `the remedy must appear exactly once (in Next:): ${staleDocs.stderr}`,
+  );
 
   const sourceOnlyDocs = runDdd(["check", "--root", destination, "--source-only"]);
   assert.equal(sourceOnlyDocs.status, 0, sourceOnlyDocs.stderr);
@@ -288,6 +293,29 @@ test("interrupted-init staging debris never poisons no-root commands and the nex
   assert.equal(checked.status, 0, checked.stderr);
 });
 
+test("init sweeps same-destination staging only when its creating process is dead", () => {
+  const repository = makeRepositoryShell("ddduck-init-live-stage-");
+  const liveHolder = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000);"]);
+  try {
+    const deadProbe = spawnSync(process.execPath, ["-e", ""]);
+    const liveStage = path.join(repository, `.ddduck-init-stage-ddd-${liveHolder.pid}-live00`);
+    const deadStage = path.join(repository, `.ddduck-init-stage-ddd-${deadProbe.pid}-dead00`);
+    mkdirSync(path.join(liveStage, "model"), { recursive: true });
+    mkdirSync(path.join(deadStage, "model"), { recursive: true });
+
+    const initialized = runDdd(["init", "ddd", "--id", "model:demo"], repository);
+    assert.equal(initialized.status, 0, initialized.stderr);
+    assert.equal(
+      existsSync(liveStage),
+      true,
+      "init must not sweep a same-destination staging directory whose creating process is alive",
+    );
+    assert.equal(existsSync(deadStage), false, "init must still sweep same-destination staging left by a dead process");
+  } finally {
+    liveHolder.kill("SIGKILL");
+  }
+});
+
 test("install skill defaults --repo to the current directory", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-"));
   const result = spawnSync(process.execPath, [cli, "install", "skill", "update-ddduck-specs"], {
@@ -321,6 +349,24 @@ test("install skill reports created and no-op runs distinguishably", () => {
   assert.equal(repeated.stdout.trim().split("\n").length, 1);
 });
 
+test("install skill rejects a nonexistent --repo without creating anything", () => {
+  const parent = mkdtempSync(path.join(tmpdir(), "ddduck-install-missing-repo-"));
+  const missingRepo = path.join(parent, "no-such-repo-typo");
+
+  const result = runDdd(["install", "skill", "update-ddduck-specs", "--repo", missingRepo]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Error: install requires an existing repository directory/);
+  assert.match(result.stderr, /Next: /);
+  assert.equal(existsSync(missingRepo), false, "install must not manufacture the missing repository");
+
+  const filePath = path.join(parent, "a-file");
+  writeFileSync(filePath, "not a directory\n");
+  const fileResult = runDdd(["install", "skill", "update-ddduck-specs", "--repo", filePath]);
+  assert.notEqual(fileResult.status, 0);
+  assert.match(fileResult.stderr, /install requires an existing repository directory/);
+});
+
 test("install skill rejects unsupported mutation and host options", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-options-"));
   const result = runDdd(["install", "skill", "update-ddduck-specs", "--force", "yes", "--repo", destination]);
@@ -337,7 +383,7 @@ test("init reports canonical and generated paths in text and JSON", () => {
   assert.equal(textResult.status, 0, textResult.stderr);
   assert.equal(
     textResult.stdout,
-    `init model:text-result in ${realpathSync(textDestination)}; canonical: product.yaml; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson\n`,
+    `init model:text-result in ${realpathSync(textDestination)}; canonical: product.yaml; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson, generated/graph/model-graph.svg; config: ${path.join(textDestination, ".ddduck", "config.json")} (created)\n`,
   );
 
   const jsonDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-json-"));
@@ -354,8 +400,20 @@ test("init reports canonical and generated paths in text and JSON", () => {
       "generated/docs/model-overview.md",
       "generated/graph/model-graph.json",
       "generated/graph/model-graph.ndjson",
+      "generated/graph/model-graph.svg",
     ],
+    configPath: path.join(jsonDestination, ".ddduck", "config.json"),
   });
+});
+
+test("an invalid product ID error teaches the expected format with an example", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-invalid-id-"));
+
+  const result = runDdd(["init", destination, "--id", "library"]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Invalid product ID "library"/);
+  assert.match(result.stderr, /expected model:<lowercase-slug> \(for example model:library\)/);
 });
 
 test("expected command errors include a command-specific safe next action", () => {
@@ -515,6 +573,135 @@ test("create and move preserve a guarantee ID and its ownership history", () => 
   assert.equal(checked.status, 0, checked.stderr);
 });
 
+test("a round-trip move leaves only true former owners in ownershipHistory", () => {
+  const destination = makeProductFixture();
+  const created = runDdd([
+    "create",
+    "guarantee",
+    "--origin",
+    "members",
+    "--classification",
+    "invariant",
+    "--owner",
+    "domain:members",
+    "--statement",
+    "A member remains identifiable.",
+    "--root",
+    destination,
+  ]);
+  assert.equal(created.status, 0, created.stderr);
+
+  const there = runDdd(["move", "guarantee", "MEMBERS-INV-01", "--to", "domain:reminders", "--root", destination]);
+  assert.equal(there.status, 0, there.stderr);
+  const back = runDdd(["move", "guarantee", "MEMBERS-INV-01", "--to", "domain:members", "--root", destination]);
+  assert.equal(back.status, 0, back.stderr);
+
+  const source = readFileSync(path.join(destination, "model", "guarantees", "members-inv-01.yaml"), "utf8");
+  assert.match(source, /ownerDomain: domain:members/);
+  assert.match(source, /ownershipHistory:\n  - domain:reminders\n/);
+  assert.doesNotMatch(source, /^ {2}- domain:members$/m, "the current owner must not appear as a former owner");
+});
+
+test("mutations preserve authored comments in canonical YAML files they rewrite", () => {
+  const destination = makeProductFixture();
+  const domainPath = path.join(destination, "model", "domains", "members.yaml");
+  writeFileSync(
+    domainPath,
+    readFileSync(domainPath, "utf8").replace("name: Members", "# Members owns identity.\nname: Members"),
+  );
+
+  const created = runDdd([
+    "create",
+    "guarantee",
+    "--origin",
+    "members",
+    "--classification",
+    "invariant",
+    "--owner",
+    "domain:members",
+    "--statement",
+    "A member remains identifiable.",
+    "--root",
+    destination,
+  ]);
+  assert.equal(created.status, 0, created.stderr);
+  assert.match(
+    readFileSync(domainPath, "utf8"),
+    /# Members owns identity\./,
+    "create guarantee must preserve the owner domain file's authored comment",
+  );
+
+  const guaranteePath = path.join(destination, "model", "guarantees", "members-inv-01.yaml");
+  writeFileSync(
+    guaranteePath,
+    readFileSync(guaranteePath, "utf8").replace(
+      "statement: A member remains identifiable.",
+      "statement: A member remains identifiable. # do not weaken",
+    ),
+  );
+  const moved = runDdd(["move", "guarantee", "MEMBERS-INV-01", "--to", "domain:reminders", "--root", destination]);
+  assert.equal(moved.status, 0, moved.stderr);
+  assert.match(
+    readFileSync(guaranteePath, "utf8"),
+    /# do not weaken/,
+    "move guarantee must preserve the guarantee file's inline comment",
+  );
+  assert.match(
+    readFileSync(domainPath, "utf8"),
+    /# Members owns identity\./,
+    "move guarantee must preserve the former owner domain file's authored comment",
+  );
+
+  const successor = runDdd([
+    "create",
+    "guarantee",
+    "--origin",
+    "members",
+    "--classification",
+    "invariant",
+    "--owner",
+    "domain:members",
+    "--statement",
+    "A member keeps a stable ID.",
+    "--root",
+    destination,
+  ]);
+  assert.equal(successor.status, 0, successor.stderr);
+  const split = runDdd([
+    "split",
+    "guarantee",
+    "MEMBERS-INV-01",
+    "--into",
+    "MEMBERS-INV-02",
+    "--decision",
+    "ADR-001",
+    "--root",
+    destination,
+  ]);
+  assert.equal(split.status, 0, split.stderr);
+  assert.match(
+    readFileSync(guaranteePath, "utf8"),
+    /# do not weaken/,
+    "split guarantee must preserve the guarantee file's inline comment",
+  );
+
+  const successorPath = path.join(destination, "model", "guarantees", "members-inv-02.yaml");
+  writeFileSync(
+    successorPath,
+    readFileSync(successorPath, "utf8").replace("status: active", "# supersedes MEMBERS-INV-01\nstatus: active"),
+  );
+  const retired = runDdd(["retire", "guarantee", "MEMBERS-INV-02", "--decision", "ADR-001", "--root", destination]);
+  assert.equal(retired.status, 0, retired.stderr);
+  assert.match(
+    readFileSync(successorPath, "utf8"),
+    /# supersedes MEMBERS-INV-01/,
+    "retire guarantee must preserve the guarantee file's authored comment",
+  );
+
+  const checked = runDdd(["check", "--root", destination]);
+  assert.equal(checked.status, 0, checked.stderr);
+});
+
 test("create guarantee reports its allocated ID and canonical source path", () => {
   const destination = makeProductFixture();
   const normalizedDestination = realpathSync(destination);
@@ -538,7 +725,7 @@ test("create guarantee reports its allocated ID and canonical source path", () =
   assert.equal(created.stderr, "");
   assert.equal(
     created.stdout,
-    `create guarantee MEMBERS-INV-01 in ${normalizedDestination}; canonical: model/domains/members.yaml, model/guarantees/members-inv-01.yaml; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson\n`,
+    `create guarantee MEMBERS-INV-01 in ${normalizedDestination}; canonical: model/domains/members.yaml, model/guarantees/members-inv-01.yaml; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson, generated/graph/model-graph.svg\n`,
   );
 });
 
@@ -559,6 +746,7 @@ test("generate --json returns exactly one mutation result object", () => {
       "generated/docs/model-overview.md",
       "generated/graph/model-graph.json",
       "generated/graph/model-graph.ndjson",
+      "generated/graph/model-graph.svg",
     ],
   });
   assert.equal(generated.stdout.trim().split("\n").length, 1);
@@ -574,6 +762,70 @@ test("check success remains silent", () => {
   assert.equal(checked.status, 0, checked.stderr);
   assert.equal(checked.stdout, "");
   assert.equal(checked.stderr, "");
+});
+
+test("check names the validated root on stderr when --root is resolved implicitly", () => {
+  const repository = makeConfiguredRepository();
+  const configuredRoot = realpathSync(path.join(repository, "docs", "ddd"));
+
+  const checked = runDdd(["check"], repository);
+
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.equal(checked.stdout, "");
+  assert.equal(
+    checked.stderr,
+    `check: validating ${configuredRoot} (root resolved automatically; pass --root to override)\n`,
+  );
+});
+
+test("check beside a broken second product names the config-pinned root it validated", () => {
+  const repository = makeRepositoryShell("ddduck-wrong-root-");
+  assert.equal(runDdd(["init", "apps/a/ddd", "--id", "model:alpha"], repository).status, 0);
+  assert.equal(runDdd(["init", "apps/b/ddd", "--id", "model:beta"], repository).status, 0);
+  const brokenProductPath = path.join(repository, "apps", "b", "ddd", "product.yaml");
+  writeFileSync(
+    brokenProductPath,
+    readFileSync(brokenProductPath, "utf8").replace("domains: []", "domains:\n  - domain:ghost"),
+  );
+
+  const checked = runDdd(["check"], path.join(repository, "apps", "b"));
+
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.equal(checked.stdout, "");
+  const validatedRoot = realpathSync(path.join(repository, "apps", "a", "ddd"));
+  assert.ok(
+    checked.stderr.includes(`check: validating ${validatedRoot}`),
+    `check must name the root it validated so the wrong-root pass is visible: ${checked.stderr}`,
+  );
+});
+
+test("init reports the repository config write and points at a pinned default on a second init", () => {
+  const repository = makeRepositoryShell("ddduck-init-config-report-");
+  const configPath = path.join(realpathSync(repository), ".ddduck", "config.json");
+
+  const first = runDdd(["init", "apps/a/ddd", "--id", "model:alpha"], repository);
+  assert.equal(first.status, 0, first.stderr);
+  assert.match(first.stdout, new RegExp(`; config: ${escapeRegExp(configPath)} \\(created\\)\\n$`));
+
+  const second = runDdd(["init", "apps/b/ddd", "--id", "model:beta"], repository);
+  assert.equal(second.status, 0, second.stderr);
+  assert.doesNotMatch(second.stdout, /config:/);
+  assert.ok(
+    second.stderr.includes(configPath) && second.stderr.includes("apps/a/ddd"),
+    `a second init must point at the still-pinned repository default root: ${second.stderr}`,
+  );
+
+  const jsonRepository = makeRepositoryShell("ddduck-init-config-json-");
+  const jsonResult = runDdd(["init", "ddd", "--id", "model:alpha", "--json"], jsonRepository);
+  assert.equal(jsonResult.status, 0, jsonResult.stderr);
+  assert.equal(
+    JSON.parse(jsonResult.stdout).configPath,
+    path.join(realpathSync(jsonRepository), ".ddduck", "config.json"),
+  );
+
+  const preExisting = runDdd(["init", "other", "--id", "model:beta", "--json"], jsonRepository);
+  assert.equal(preExisting.status, 0, preExisting.stderr);
+  assert.equal(Object.hasOwn(JSON.parse(preExisting.stdout), "configPath"), false);
 });
 
 test("product commands resolve a configured root when --root is omitted", () => {
@@ -603,6 +855,11 @@ test("generate publishes the canonical graph SVG and check gates on its freshnes
   const stale = runDdd(["check"], repository);
   assert.notEqual(stale.status, 0, "check must fail on a stale SVG");
   assert.match(stale.stderr, /model-graph\.svg is missing or stale/);
+  assert.equal(
+    stale.stderr.match(/run ddduck generate --root /gi).length,
+    1,
+    `the remedy must appear exactly once (in Next:): ${stale.stderr}`,
+  );
 
   // generate re-renders it and check passes again.
   assert.equal(runDdd(["generate"], repository).status, 0);
@@ -834,6 +1091,61 @@ test("split and retire reject active use-case references before changing lifecyc
   );
 });
 
+test("split successors can later split and retire under their own registered decisions", () => {
+  const destination = makeProductFixture();
+  createGuarantee(destination, "MEMBERS-INV-01", "domain:members");
+  createGuarantee(destination, "MEMBERS-INV-02", "domain:members");
+  createGuarantee(destination, "MEMBERS-INV-03", "domain:members");
+
+  const split = runDdd([
+    "split",
+    "guarantee",
+    "MEMBERS-INV-01",
+    "--into",
+    "MEMBERS-INV-02",
+    "--decision",
+    "ADR-001",
+    "--root",
+    destination,
+  ]);
+  assert.equal(split.status, 0, split.stderr);
+
+  const successorSplit = runDdd([
+    "split",
+    "guarantee",
+    "MEMBERS-INV-02",
+    "--into",
+    "MEMBERS-INV-03",
+    "--decision",
+    "ADR-001",
+    "--root",
+    destination,
+  ]);
+  assert.equal(successorSplit.status, 0, successorSplit.stderr);
+  assert.match(
+    readFileSync(path.join(destination, "model", "guarantees", "members-inv-02.yaml"), "utf8"),
+    /status: split/,
+  );
+
+  const successorRetire = runDdd([
+    "retire",
+    "guarantee",
+    "MEMBERS-INV-03",
+    "--decision",
+    "ADR-001",
+    "--root",
+    destination,
+  ]);
+  assert.equal(successorRetire.status, 0, successorRetire.stderr);
+  assert.match(
+    readFileSync(path.join(destination, "model", "guarantees", "members-inv-03.yaml"), "utf8"),
+    /status: retired/,
+  );
+
+  const checked = runDdd(["check", "--root", destination]);
+  assert.equal(checked.status, 0, checked.stderr);
+});
+
 test("a mutation reclaims a stale operation lock left by a dead process", () => {
   const destination = makeProductFixture();
   const deadPid = spawnSync(process.execPath, ["-e", ""]).pid;
@@ -931,7 +1243,7 @@ test("a live reclaim claim blocks takeover of a stale lock, naming the claim fil
 
   const generated = runDdd(["generate", "--root", destination]);
 
-  assert.notEqual(generated.status, 0);
+  assert.equal(generated.status, 2, generated.stderr);
   assert.match(generated.stderr, /Product root is busy/);
   assert.match(generated.stderr, /\.ddduck-operation\.reclaim/);
 });
@@ -943,12 +1255,38 @@ test("a lock held by a live process fails once naming the lock file and holder",
 
   const generated = runDdd(["generate", "--root", destination]);
 
-  assert.notEqual(generated.status, 0);
+  assert.equal(generated.status, 2, generated.stderr);
   assert.match(generated.stderr, /Product root is busy/);
   assert.match(generated.stderr, /\.ddduck-operation\.lock/);
   assert.match(generated.stderr, new RegExp(`\\b${process.pid}\\b`));
   assert.doesNotMatch(generated.stderr, /correct the input/);
   assert.ok(existsSync(lockPath));
+});
+
+test("a retryable busy failure exits 2 while other failures keep exit 1", () => {
+  const destination = makeProductFixture();
+  const lockPath = path.join(destination, ".ddduck-operation.lock");
+  writeFileSync(lockPath, `${process.pid}\n`);
+
+  const busy = runDdd(["check", "--root", destination]);
+  assert.equal(busy.status, 2, busy.stderr);
+  assert.match(busy.stderr, /held by running process/);
+
+  rmSync(lockPath);
+  writeFileSync(
+    path.join(destination, "model", "concepts", "broken.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: Concept",
+      "id: concept:broken",
+      "model: model:sample",
+      "name: broken",
+      "ownerDomain: domain:missing",
+      "",
+    ].join("\n"),
+  );
+  const invalid = runDdd(["check", "--root", destination, "--source-only"]);
+  assert.equal(invalid.status, 1, invalid.stderr);
 });
 
 test("a lock without a readable owner fails naming the lock file and the deletion recovery", () => {
@@ -990,19 +1328,50 @@ test("readers fail cleanly instead of reading while a live mutation holds the op
   writeFileSync(path.join(destination, ".ddduck-operation.lock"), `${process.pid}\n`);
 
   const query = runDdd(["query", "node", "--id", "domain:members", "--root", destination, "--json"]);
-  assert.notEqual(query.status, 0, query.stdout);
+  assert.equal(query.status, 2, query.stdout || query.stderr);
   assert.match(query.stderr, /busy/);
   assert.match(query.stderr, /\.ddduck-operation\.lock/);
 
   const checked = runDdd(["check", "--root", destination]);
-  assert.notEqual(checked.status, 0, checked.stdout);
+  assert.equal(checked.status, 2, checked.stdout || checked.stderr);
   assert.match(checked.stderr, /busy/);
   assert.match(checked.stderr, /\.ddduck-operation\.lock/);
 
+  // A lock with a dead owner is leftover interrupted-operation state, not a
+  // live mutation: queries refuse it like check instead of exit 2 busy.
   const deadPid = spawnSync(process.execPath, ["-e", ""]).pid;
   writeFileSync(path.join(destination, ".ddduck-operation.lock"), `${deadPid}\n`);
   const deadOwnerQuery = runDdd(["query", "node", "--id", "domain:members", "--root", destination, "--json"]);
-  assert.equal(deadOwnerQuery.status, 0, deadOwnerQuery.stderr);
+  assert.equal(deadOwnerQuery.status, 1, deadOwnerQuery.stdout || deadOwnerQuery.stderr);
+  assert.match(deadOwnerQuery.stderr, /interrupted ddduck operation left \.ddduck-operation\.lock/);
+});
+
+test("queries refuse leftover interrupted-operation state with the reclaim next action", () => {
+  const destination = makeProductFixture();
+  assert.equal(runDdd(["generate", "--root", destination]).status, 0);
+  const deadPid = spawnSync(process.execPath, ["-e", ""]).pid;
+  writeFileSync(path.join(destination, ".ddduck-operation.lock"), `${deadPid}\n`);
+
+  const spec = runDdd(["query", "spec", "--root", destination, "--json"]);
+  assert.equal(spec.status, 1, spec.stdout || spec.stderr);
+  assert.equal(spec.stdout, "");
+  assert.match(spec.stderr, /interrupted ddduck operation left \.ddduck-operation\.lock/);
+  assert.match(spec.stderr, /Next: Run ddduck generate --root .* to reclaim the interrupted operation state/);
+
+  rmSync(path.join(destination, ".ddduck-operation.lock"));
+  mkdirSync(path.join(destination, ".ddduck-operation-stage-zz"));
+  const context = runDdd(["query", "context", "--id", "domain:members", "--root", destination, "--json"]);
+  assert.equal(context.status, 1, context.stdout || context.stderr);
+  assert.match(context.stderr, /interrupted ddduck operation left \.ddduck-operation-stage-zz/);
+
+  // check's own leftover refusal is unchanged.
+  const checked = runDdd(["check", "--root", destination]);
+  assert.equal(checked.status, 1, checked.stdout || checked.stderr);
+  assert.match(checked.stderr, /\.ddduck-operation-stage-zz/);
+
+  rmSync(path.join(destination, ".ddduck-operation-stage-zz"), { recursive: true, force: true });
+  const clean = runDdd(["query", "spec", "--root", destination, "--json"]);
+  assert.equal(clean.status, 0, clean.stderr);
 });
 
 test("check reports each source validation error on its own line beneath a summary", () => {
@@ -1039,6 +1408,66 @@ test("check reports each source validation error on its own line beneath a summa
   );
 });
 
+test("validation failures point at the listed source files, not the CLI input", () => {
+  const destination = makeProductFixture();
+  writeFileSync(
+    path.join(destination, "model", "concepts", "broken.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: Concept",
+      "id: concept:broken",
+      "model: model:sample",
+      "name: broken",
+      "ownerDomain: domain:missing",
+      "",
+    ].join("\n"),
+  );
+
+  const generated = runDdd(["generate", "--root", destination]);
+  assert.notEqual(generated.status, 0);
+  assert.match(generated.stderr, /Error: Validation failed for /, "generate must use the same preamble as check");
+  assert.match(generated.stderr, /Next: Fix the listed source files, then re-run ddduck check\./);
+  assert.doesNotMatch(generated.stderr, /correct the input/);
+
+  const checked = runDdd(["check", "--root", destination, "--source-only"]);
+  assert.equal(checked.status, 1);
+  assert.match(checked.stderr, /Next: Fix the listed source files, then re-run ddduck check\./);
+  assert.doesNotMatch(checked.stderr, /correct the input/);
+});
+
+test("a blocked lifecycle transition names the referencing file and the edit-generate-retry path", () => {
+  const destination = makeProductFixture();
+  createGuarantee(destination, "MEMBERS-INV-01", "domain:members");
+  writeFileSync(
+    path.join(destination, "model", "interfaces", "identify-member.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: DomainInterface",
+      "id: interface:identify-member",
+      "model: model:sample",
+      "ownerDomain: domain:members",
+      "name: Identify member",
+      "operationKind: query",
+      "guarantees:",
+      "  - MEMBERS-INV-01",
+      "",
+    ].join("\n"),
+  );
+  const domainPath = path.join(destination, "model", "domains", "members.yaml");
+  writeFileSync(
+    domainPath,
+    readFileSync(domainPath, "utf8").replace("interfaces: []", "interfaces:\n  - interface:identify-member"),
+  );
+  assert.equal(runDdd(["generate", "--root", destination]).status, 0);
+
+  const retired = runDdd(["retire", "guarantee", "MEMBERS-INV-01", "--decision", "ADR-001", "--root", destination]);
+  assert.notEqual(retired.status, 0);
+  assert.match(retired.stderr, /non-effective guarantee MEMBERS-INV-01/);
+  assert.match(retired.stderr, /Next: Edit model\/interfaces\/identify-member\.yaml/);
+  assert.match(retired.stderr, /run ddduck generate --root .*, and retry\./);
+  assert.doesNotMatch(retired.stderr, /--help, correct the input/);
+});
+
 test("generate text result reports an empty canonical list as none", () => {
   const destination = makeProductFixture();
   const generated = runDdd(["generate", "--root", destination]);
@@ -1046,7 +1475,7 @@ test("generate text result reports an empty canonical list as none", () => {
   assert.equal(generated.status, 0, generated.stderr);
   assert.equal(
     generated.stdout,
-    `generate in ${realpathSync(destination)}; canonical: none; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson\n`,
+    `generate in ${realpathSync(destination)}; canonical: none; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson, generated/graph/model-graph.svg\n`,
   );
 });
 
@@ -1204,6 +1633,10 @@ function createGuarantee(destination, id, ownerDomain) {
       ? domainSource.replace("guarantees: []", `guarantees:\n  - ${id}`)
       : `${domainSource.trimEnd()}\n  - ${id}\n`,
   );
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function runDdd(args, cwd = root) {
