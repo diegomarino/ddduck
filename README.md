@@ -14,7 +14,7 @@ Every product renders to a verified graph of its model — the ownership spine
 line styles. `ddduck generate` produces it as a deterministic SVG. This
 framework's own model:
 
-![ddduck model graph: the framework's Model, its Domains and owned Concepts, Interfaces, Guarantees, and Use Cases, with a legend](https://raw.githubusercontent.com/diegomarino/ddduck/main/docs/ddd/generated/graph/model-graph.svg)
+![ddduck model graph: the framework's Model, its Domains and owned Concepts, and typed relationships, with a legend](https://raw.githubusercontent.com/diegomarino/ddduck/main/docs/ddd/generated/graph/model-graph.svg)
 
 ## Product layout
 
@@ -40,7 +40,9 @@ docs/ddd/
 `product.yaml` and files under `model/` are canonical source. `generated/` is derived
 output: never edit it by hand.
 
-Repository-local ddduck tool metadata lives outside the product root in `.ddduck/`. For example,
+Repository-local ddduck tool metadata lives outside the product root in `.ddduck/` at the
+enclosing repository root; without one, `ddduck init` writes it inside the new product root
+instead (see [the CLI reference](docs/cli.md#product-root-resolution)). For example,
 this framework repository stores its own model in `docs/ddd/` and records that selection in:
 
 ```json
@@ -57,7 +59,7 @@ and fully editable (see [the CLI reference](docs/cli.md)).
 
 ## Authoring
 
-Install the CLI from npm:
+Install the CLI from npm (requires Node.js 20 or newer):
 
 ```bash
 npm install -g ddduck
@@ -72,8 +74,9 @@ ddduck init ddd --id model:<product-id>
 ```
 
 `--root <path>` is always the explicit override; without it, ddduck resolves the enclosing
-product root, then `.ddduck/config.json`, then a unique repository candidate, and fails with a
-diagnostic when the choice is ambiguous. The mutation surface is deliberately narrow — `check`,
+product root, then `.ddduck/config.json`, then a unique repository candidate (see
+[the CLI reference](docs/cli.md#product-root-resolution) for the full order, including the
+example-candidate fallback), and fails with a diagnostic when the choice is ambiguous. The mutation surface is deliberately narrow — `check`,
 `generate`, and the `create`/`move`/`split`/`retire` Guarantee lifecycle commands — and every
 successful source mutation regenerates the derived views. The canonical resolution rules and
 command contracts live in [the CLI reference](docs/cli.md#product-root-resolution).

@@ -13,6 +13,7 @@ contracts live in [the CLI reference](cli.md).
   documentation references are enforced repository-wide).
 - `check:docs` — verifies the generated Markdown views are fresh.
 - `check:graph` — verifies the generated graph views are fresh.
+- `check:graph:svg` — verifies the generated graph SVG is fresh.
 - `lint` — ESLint over the repository.
 - `lint:md` — markdownlint over the repository's Markdown (audit reports and
   `docs/superpowers/` are excluded).

@@ -20,6 +20,7 @@ docs/ddd/
     docs/model-overview.md
     graph/model-graph.json
     graph/model-graph.ndjson
+    graph/model-graph.svg
 ```
 
 `product.yaml` and `model/**/*.yaml` are canonical. `generated/` is derived output and

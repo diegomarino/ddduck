@@ -23,4 +23,4 @@ Run the model checker from the repository root:
 npm run check:model
 ```
 
-The checker loads the canonical YAML graph, rejects disallowed YAML features, verifies unique node IDs, validates node schemas, and resolves model, domain, concept, relationship, rule, and ADR references.
+The checker loads the canonical YAML graph, rejects disallowed YAML features, verifies unique node IDs, validates node schemas, and resolves model, domain, concept, relationship, and ADR references.

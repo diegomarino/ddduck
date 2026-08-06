@@ -4,7 +4,7 @@ This executable journey creates a product with one Domain, one Concept, and one 
 
 ## Install ddduck
 
-Install the published CLI globally from npm:
+Requires Node.js 20 or newer. Install the published CLI globally from npm:
 
 ```sh
 npm install -g ddduck
@@ -15,7 +15,7 @@ To contribute or run an unreleased revision, work from a local checkout instead.
 `ddduck` bin on `PATH` with `npm link`:
 
 ```sh
-git clone <ddduck-repository-url> ddduck
+git clone https://github.com/diegomarino/ddduck.git ddduck
 cd ddduck
 npm install
 npm link
@@ -30,7 +30,10 @@ node <checkout>/scripts/ddduck.mjs --help
 
 ## Create the first product
 
-Run the complete Bash block from an empty working directory with `ddduck` on `PATH`.
+Run the complete Bash block from an empty working directory with `ddduck` on `PATH`, normally
+inside a Git repository: `init` records the repository default in `.ddduck/config.json` at the
+repository root, and without one writes it inside the new product root instead (see
+[the CLI reference](cli.md#product-root-resolution)).
 
 ```mermaid
 flowchart LR

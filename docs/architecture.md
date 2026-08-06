@@ -61,8 +61,11 @@ flowchart LR
 
 ## Query boundary
 
-Queries are read-only and require `--json`. A context query returns selected canonical records,
-direct touching edges, one-hop summaries for unselected neighbors, and a source digest. It does
+Queries are read-only and always emit exactly one JSON document (`--json` is accepted as a
+no-op). A context query returns selected canonical records,
+direct touching edges, one-hop summaries for unselected neighbors, and a source digest. The
+source digest covers the canonical node YAML sources only — `product.yaml` and the files under
+`model/` — so decision records under `decisions/` are outside its scope. It does
 not recursively expand context or write canonical or generated files.
 
 ```mermaid

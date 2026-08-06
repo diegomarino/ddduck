@@ -11,6 +11,8 @@ The checker requires exactly one Model root.
 `product.yaml` is the only `Model` node. Unlike every child node, it has no `model` field.
 Required fields are `schemaVersion`, `kind`, `id`, `name`, `purpose`, and `domains`. Optional
 top-level fields include `nameStatus`, `useCases`, `relationships`, `decisions`, and `notes`.
+`nameStatus` is a free-form string describing how settled the model name is (for example
+`stable` or `provisional`); generated views show it only when it is declared.
 
 ```yaml
 schemaVersion: "1"
@@ -87,6 +89,8 @@ records former owning Domains. Evidence anchors are also supported.
 
 Evidence anchors contain a product-relative `path`, `anchor`, and `role` (`source`, `decision`,
 or `verification`). The path must resolve to a regular file inside the selected product root.
+For Markdown (`.md`) paths the checker also verifies that the `anchor` string occurs in the
+file content; for non-Markdown paths the anchor is a free-form label and is not content-checked.
 
 For full schema constraints, inspect the shipped files under `schemas/product/`; use
 [the getting-started guide](getting-started.md) for the minimal working path.

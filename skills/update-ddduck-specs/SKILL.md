@@ -10,7 +10,7 @@ Maintain or bootstrap a repository's ddduck product model from evidence visible 
 ## Inputs and boundaries
 
 - Resolve the repository root, read all applicable repository instructions, and inspect Git status before analysis.
-- Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository. `ddduck query spec` reports the resolved root. Ambiguous resolution is a stop condition: report the candidates and ask; never bootstrap a second product root beside an existing one.
+- Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository (the ddduck CLI reference documents the full order, including the example-candidate fallback). `ddduck query spec` reports the resolved root. Ambiguous resolution is a stop condition: report the candidates and ask; never bootstrap a second product root beside an existing one.
 - Default to plan-only. Mutate files only when the current user request explicitly authorizes application, including prose that clearly authorizes the evidence-backed changes. `--root <path>` and `--apply` may be convenient shorthand, but ordinary prose must work.
 - Preserve unrelated and uncommitted work. Stop when intended target files overlap user changes inseparably.
 - Write only `<root>/product.yaml`, `<root>/model/**`, `<root>/decisions/**`, and regenerated `<root>/generated/**`.
