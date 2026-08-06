@@ -26,12 +26,25 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "lts/*"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Upgrade npm to an OIDC-capable version
-        # Node 22.x bundles npm 10.x; trusted publishing needs npm >= 11.5.1.
-        run: npm install --global npm@^11.5.1
+      - name: Assert bundled npm supports OIDC trusted publishing
+        # Trusted publishing needs npm >= 11.5.1; Node 24 bundles npm >= 11.5.1.
+        # Guard instead of upgrading so no unpinned third-party code runs here.
+        run: |
+          version="$(npm --version)"
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number);
+            const ok =
+              major > 11 ||
+              (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)));
+            if (!ok) {
+              console.error(`npm ${process.argv[1]} < 11.5.1; cannot publish via OIDC`);
+              process.exit(1);
+            }
+            console.log(`npm ${process.argv[1]} >= 11.5.1`);
+          ' "$version"
 
       - name: Install dependencies
         run: npm ci
