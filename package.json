@@ -51,7 +51,7 @@
     "generate:graph": "node scripts/generate-graph.mjs",
     "generate:graph:svg": "node scripts/generate-graph-svg.mjs",
     "lint": "eslint .",
-    "lint:md": "markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \"examples/**/*.md\" \"#CHANGELOG.md\"",
+    "lint:md": "markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \"examples/**/*.md\" \"#CHANGELOG.md\" \"#docs/audits\" \"#docs/superpowers\"",
     "test": "node --test test/*.test.mjs",
     "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs",
     "pack:dry-run": "npm pack --dry-run --cache .npm-cache",
