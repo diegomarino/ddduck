@@ -1,9 +1,33 @@
+/**
+ * Defines the on-disk layout of a product root and loads its canonical YAML:
+ * product.yaml plus the model/{domains,concepts,relationships,use-cases,
+ * interfaces,guarantees} directories (nodeDirectoryKinds maps directory to
+ * node kind). loadProductNodes yields mutable nodes with file paths and raw
+ * sources (for the query digest); loadProductSnapshot yields the deep-frozen
+ * snapshot with root-relative canonical paths that mutation transforms plan
+ * against. Strict YAML parsing: duplicate keys and non-mapping files fail.
+ */
+
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { parseDocument } from "yaml";
 
-const nodeDirectories = ["domains", "concepts", "relationships", "use-cases", "interfaces", "guarantees"];
+export const nodeDirectoryKinds = new Map([
+  ["domains", "Domain"],
+  ["concepts", "Concept"],
+  ["relationships", "Relationship"],
+  ["use-cases", "UseCase"],
+  ["interfaces", "DomainInterface"],
+  ["guarantees", "Guarantee"],
+]);
 
+const nodeDirectories = [...nodeDirectoryKinds.keys()];
+
+/**
+ * Describe the canonical layout below a product root.
+ * @param {string} rootPath - Product root path.
+ * @returns {{root: string, productPath: string, nodeDirectories: string[], decisionsDirectory: string, generatedDirectory: string}} Resolved layout paths.
+ */
 export function detectProductLayout(rootPath) {
   const root = path.resolve(rootPath);
   return {
@@ -15,6 +39,11 @@ export function detectProductLayout(rootPath) {
   };
 }
 
+/**
+ * Load every canonical YAML node under a layout, rejecting duplicate node IDs.
+ * @param {{root: string, productPath: string, nodeDirectories: string[]}} layout - Layout from detectProductLayout.
+ * @returns {{nodes: Map<string, object>, nodeFiles: Map<string, string>, nodeSources: Map<string, Buffer>}} Nodes, their file paths, and raw source bytes keyed by ID.
+ */
 export function loadProductNodes(layout) {
   const nodes = new Map();
   const nodeFiles = new Map();
@@ -35,6 +64,12 @@ export function loadProductNodes(layout) {
   return { nodes, nodeFiles, nodeSources };
 }
 
+/**
+ * Load the deep-frozen snapshot that mutation transforms receive: immutable
+ * nodes plus each node's root-relative canonical path.
+ * @param {{root: string, productPath: string, nodeDirectories: string[]}} layout - Layout from detectProductLayout.
+ * @returns {{nodes: readonly object[], canonicalPaths: Record<string, string>}} Frozen snapshot.
+ */
 export function loadProductSnapshot(layout) {
   const loaded = loadProductNodes(layout);
   const nodes = Object.freeze([...loaded.nodes.values()].map((node) => deepFreeze(node)));
@@ -49,6 +84,12 @@ export function loadProductSnapshot(layout) {
   return Object.freeze({ nodes, canonicalPaths });
 }
 
+/**
+ * Parse one canonical YAML file strictly (unique keys) into a plain mapping.
+ * @param {string} filePath - File path, used in diagnostics.
+ * @param {string} [source] - YAML source; read from filePath when omitted.
+ * @returns {object} The parsed YAML mapping.
+ */
 export function parseYamlMapping(filePath, source = readFileSync(filePath, "utf8")) {
   const document = parseDocument(source, { keepSourceTokens: true, strict: true, uniqueKeys: true });
   if (document.errors.length > 0) {

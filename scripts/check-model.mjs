@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * The model checker behind `ddduck check`: validates a product root's canonical
+ * YAML against the framework schemas, referential integrity (single Model,
+ * ownership, decisions), evidence anchors, guarantee lifecycle rules, and the
+ * executable policy checks (ownership, documentation model-reference
+ * resolution). With --base it also enforces guarantee history retention against
+ * a previous product root. Exports validateProduct for the operation runner,
+ * query loader, and root resolver; runs standalone as a CLI (exit 1 on errors).
+ */
+
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +17,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { parseDocument } from "yaml";
-import { detectProductLayout, loadProductNodes } from "./lib/product-layout.mjs";
+import { detectProductLayout, loadProductNodes, nodeDirectoryKinds } from "./lib/product-layout.mjs";
 import { shouldIgnoreScanEntry } from "./lib/scan-ignore.mjs";
 import { findRepositoryRoot, resolveConfiguredIgnores } from "./lib/ddduck-config.mjs";
 
@@ -18,7 +28,7 @@ const executableRuleChecks = new Set([
 ]);
 
 const markdownReferencePattern =
-  /\b(?:(?:model|domain|concept|rel|rule|use-case|interface):[a-z0-9][a-z0-9-]*|[A-Z][A-Z0-9-]+-(?:INV|AC)-[0-9]+|ADR-[0-9]{3})\b/g;
+  /\b(?:(?:model|domain|concept|rel|use-case|interface):[a-z0-9][a-z0-9-]*|[A-Z][A-Z0-9-]+-(?:INV|AC)-[0-9]+|ADR-[0-9]{3})\b/g;
 
 const defaultFrameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -58,6 +68,11 @@ function parseArgs(args) {
   return parsed;
 }
 
+/**
+ * One validation run over a product root: loads nodes and decisions, then
+ * accumulates every diagnostic in `errors` (file-relative, one per line) while
+ * counting nodes, references, and executed policies for the verbose summary.
+ */
 class ProductCheck {
   constructor(rootPath, frameworkPath, basePath, documentationRoots, { sourceOnly = false } = {}) {
     this.root = rootPath;
@@ -78,6 +93,7 @@ class ProductCheck {
     this.loadDecisions();
     this.loadNodes();
     this.validateSchemas();
+    this.validateNodeDirectories();
     this.validateEvidenceAnchors();
     this.validateReferences();
     this.validateGuaranteeLifecycle();
@@ -147,6 +163,22 @@ class ProductCheck {
     }
   }
 
+  validateNodeDirectories() {
+    for (const [id, filePath] of this.nodeFiles) {
+      const segments = path.relative(this.root, filePath).split(path.sep);
+      if (segments[0] !== "model") continue;
+      const expectedKind = nodeDirectoryKinds.get(segments[1]);
+      if (!expectedKind) continue;
+      const node = this.nodes.get(id);
+      if (node.kind !== expectedKind) {
+        this.addError(
+          id,
+          `node kind ${node.kind} does not match directory model/${segments[1]} (expected ${expectedKind})`,
+        );
+      }
+    }
+  }
+
   validateReferences() {
     const models = [...this.nodes.values()].filter((node) => node.kind === "Model");
     if (models.length !== 1) {
@@ -195,6 +227,15 @@ class ProductCheck {
             node.id,
             `evidence anchor path must resolve to an existing regular file below product root: ${evidence.path}`,
           );
+          continue;
+        }
+        // Markdown targets must contain the anchor text; non-Markdown anchors
+        // stay free-form labels.
+        if (evidence.path.endsWith(".md") && typeof evidence.anchor === "string") {
+          const content = readFileSync(path.resolve(this.root, evidence.path), "utf8");
+          if (!content.includes(evidence.anchor)) {
+            this.addError(node.id, `evidence anchor not found in ${evidence.path}: ${evidence.anchor}`);
+          }
         }
       }
     }
@@ -207,8 +248,17 @@ class ProductCheck {
         if (successors.length === 0) this.addError(node.id, "split guarantee requires active successors");
         for (const id of successors) {
           const successor = this.nodes.get(id);
-          if (!successor || successor.kind !== "Guarantee" || successor.status !== "active")
-            this.addError(node.id, `split successor must be an active guarantee ${id}`);
+          if (!successor || successor.kind !== "Guarantee") {
+            this.addError(node.id, `split successor must be a guarantee ${id}`);
+            continue;
+          }
+          // A successor may leave `active` through its own authorized lifecycle
+          // transition; its record must then carry a registered lifecycleDecision.
+          if (successor.status !== "active" && !this.decisions.has(successor.lifecycleDecision))
+            this.addError(
+              node.id,
+              `split successor must be an active guarantee or carry a registered lifecycleDecision ${id}`,
+            );
         }
       }
       if (node.kind === "DomainInterface" || node.kind === "UseCase") {
@@ -269,9 +319,35 @@ class ProductCheck {
       this.errors.push(`base: ${error.message}`);
       return;
     }
+    const legalStatusTransitions = new Map([
+      ["active", ["active", "split", "retired"]],
+      ["split", ["split"]],
+      ["retired", ["retired"]],
+    ]);
     for (const baseNode of baseNodes.values()) {
-      if (baseNode.kind === "Guarantee" && !this.nodes.has(baseNode.id)) {
+      if (baseNode.kind !== "Guarantee") continue;
+      const current = this.nodes.get(baseNode.id);
+      if (!current) {
         this.errors.push(`guarantee disappeared from the product: ${baseNode.id}`);
+        continue;
+      }
+      if (!(legalStatusTransitions.get(baseNode.status) ?? []).includes(current.status)) {
+        this.addError(baseNode.id, `illegal guarantee status transition ${baseNode.status} -> ${current.status}`);
+        continue;
+      }
+      if (baseNode.status === "split" || baseNode.status === "retired") {
+        if (current.lifecycleDecision !== baseNode.lifecycleDecision)
+          this.addError(
+            baseNode.id,
+            `closed guarantee must keep lifecycleDecision ${baseNode.lifecycleDecision} from base`,
+          );
+        const baseSuccessors = asArray(baseNode.successors);
+        const currentSuccessors = asArray(current.successors);
+        if (
+          baseSuccessors.length !== currentSuccessors.length ||
+          baseSuccessors.some((id, index) => currentSuccessors[index] !== id)
+        )
+          this.addError(baseNode.id, `closed guarantee must keep successors ${baseSuccessors.join(", ")} from base`);
       }
     }
   }
@@ -373,6 +449,14 @@ function listFiles(directory, pattern) {
   }
 }
 
+/**
+ * Recursively list Markdown files under a documentation root, skipping ignored
+ * scan entries, nested git checkouts, nested product roots, and the audit and
+ * superpowers doc areas.
+ * @param {string} rootPath - Documentation root to walk.
+ * @param {string[]} [ignoredEntryNames] - Extra directory names to skip (from .ddduck config).
+ * @returns {string[]} Sorted absolute Markdown file paths.
+ */
 function listMarkdownFiles(rootPath, ignoredEntryNames = []) {
   const files = [];
 
@@ -454,6 +538,12 @@ function executePolicyChecks(check, checksToRun, { includeDocumentation = true }
   }
 }
 
+/**
+ * Validate a product root and return the completed check (inspect `.errors`).
+ * @param {string} rootPath - Product root to validate.
+ * @param {{baseRoot?: string, includeDocumentation?: boolean, documentationRoots?: string[], sourceOnly?: boolean}} [options] - Base product for history retention, documentation scope, and whether generated docs are scanned.
+ * @returns {ProductCheck} The finished check with errors and counters.
+ */
 export function validateProduct(
   rootPath,
   { baseRoot, includeDocumentation = true, documentationRoots, sourceOnly = false } = {},
