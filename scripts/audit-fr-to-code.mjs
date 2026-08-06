@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+/**
+ * CLI for verifying FR-to-code audit records (`audit-fr-to-code --input
+ * <audit.yaml> --source-root <source-id>=<checkout> --json`). Reads the YAML
+ * audit record, binds each declared source to a local git checkout whose
+ * origin URL and pinned 40-hex revision must match, reads anchored files via
+ * `git show` at that exact revision (regular-file tree entries only), and
+ * delegates verdict verification to lib/fr-to-code-audit.mjs, emitting one
+ * JSON report on stdout.
+ */
+
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -7,6 +17,13 @@ import { parseDocument } from "yaml";
 import { verifyFrToCodeAudit } from "./lib/fr-to-code-audit.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
 
+/**
+ * Parse arguments, verify the audit record against its pinned sources, and
+ * write the JSON report.
+ * @param {string[]} args - CLI arguments (--input, repeatable --source-root, --json).
+ * @param {{stdout?: {write: (chunk: string) => unknown}}} [io] - Output stream override for tests.
+ * @returns {void}
+ */
 export function runFrToCodeAudit(args, { stdout = process.stdout } = {}) {
   if (args.length === 1 && args[0] === "--help") {
     stdout.write(renderHelp("audit-fr-to-code"));
@@ -61,6 +78,14 @@ function validateDeclaredSources(record, filePath) {
   }
 }
 
+/**
+ * Build the source reader that serves file contents from pinned git revisions.
+ * Requires exactly one --source-root mapping per declared source and verifies
+ * each checkout's origin URL and revision presence up front.
+ * @param {{sources: {id: string, repository: string, revision: string}[]}} record - The validated audit record.
+ * @param {{id: string, root: string}[]} sourceRoots - Parsed --source-root mappings.
+ * @returns {{readFile: (source: object, relativePath: string) => string}} Reader handed to verifyFrToCodeAudit.
+ */
 function createGitSourceReader(record, sourceRoots) {
   if (!Array.isArray(record.sources)) throw new Error("audit input must declare sources");
   const declaredIds = new Set(record.sources.map((source) => source?.id));

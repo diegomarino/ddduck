@@ -1,3 +1,13 @@
+/**
+ * Verification core for FR-to-code audit records, shared by the
+ * audit-fr-to-code CLI and its tests. Validates a record against
+ * schemas/fr-to-code-audit.schema.json, checks the requirement ID (and traced
+ * guarantee) appear in the pinned requirement source, confirms every
+ * production/test anchor's line range exists and digests its excerpt
+ * (sha256), and enforces verdict consistency (realized-and-tested,
+ * realized-untested, unrealized) before rendering the deterministic report.
+ */
+
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -12,6 +22,12 @@ const auditSchema = JSON.parse(
 );
 const validateAudit = new Ajv2020({ allErrors: true, strict: true }).compile(auditSchema);
 
+/**
+ * Verify one audit record against its sources and render the report.
+ * @param {object} record - The parsed FrToCodeAudit YAML mapping.
+ * @param {{readFile: (source: object, relativePath: string) => string}} sourceReader - Reader that serves file text at each source's pinned revision.
+ * @returns {object} The FrToCodeAuditReport document with digested anchors.
+ */
 export function verifyFrToCodeAudit(record, sourceReader) {
   const normalized = validateRecord(record);
   requireReader(sourceReader);
@@ -69,6 +85,14 @@ function requireText(text, value, label) {
   if (!text.includes(value)) throw new Error(`FrToCodeAudit ${label} ${value} is missing from its source file`);
 }
 
+/**
+ * Resolve each anchor's source file, verify its line range fits the file, and
+ * replace the excerpt with a sha256 digest in the rendered report.
+ * @param {{sourceId: string, path: string, startLine: number, endLine: number}[]} anchors - Production or test anchors.
+ * @param {Map<string, object>} sourcesById - Declared sources keyed by ID.
+ * @param {{readFile: (source: object, relativePath: string) => string}} sourceReader - Pinned-revision file reader.
+ * @returns {object[]} Sorted anchors with excerptDigest entries.
+ */
 function renderAnchors(anchors, sourcesById, sourceReader) {
   return anchors
     .map((anchor) => {

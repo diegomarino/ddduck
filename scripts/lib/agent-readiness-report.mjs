@@ -1,8 +1,22 @@
+/**
+ * Builds the agent-readiness report for a product root, answering "how ready
+ * is this model for agent consumption": nodes missing evidence roles (via
+ * query anchors), stale generated views (via query spec freshness), owned
+ * nodes with no owning Domain, and nodes listed by multiple Domains. When
+ * validation fails the report collapses to unresolvedReferences only.
+ * Consumed by generate-agent-readiness-report.mjs.
+ */
+
 import { validateProduct } from "../check-model.mjs";
 import { loadQueryProduct, queryAnchors, querySpec } from "./product-query.mjs";
 
 const ownershipKinds = new Set(["Concept", "DomainInterface", "Guarantee"]);
 
+/**
+ * Build the readiness report for one product root.
+ * @param {string} rootPath - Product root path.
+ * @returns {{missingEvidence: object[], unresolvedReferences: string[], staleGeneratedViews: object[], orphanedNodes: object[], ambiguousOwnership: object[]}|{unresolvedReferences: string[]}} Full report, or only unresolvedReferences when validation fails.
+ */
 export function generateAgentReadinessReport(rootPath) {
   const check = validateProduct(rootPath, { includeDocumentation: false });
   if (check.errors.length > 0) {
