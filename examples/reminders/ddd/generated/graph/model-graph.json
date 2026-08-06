@@ -3,7 +3,6 @@
   "formatVersion": "final",
   "modelId": "model:members-reminders",
   "modelName": "Members and Reminders",
-  "nameStatus": "stable",
   "generatedBy": "scripts/generate-graph.mjs",
   "nodes": [
     {

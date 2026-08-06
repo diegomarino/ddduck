@@ -2,8 +2,6 @@
 
 # Members and Reminders (`model:members-reminders`)
 
-Name status: `stable`
-
 Define member lifecycle and reminder creation contracts.
 
 ## Domains

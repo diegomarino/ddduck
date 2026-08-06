@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
-// Experimental: render generated/graph/model-graph.json to an SVG using the
-// Graphviz WASM engine (@hpcc-js/wasm). Pure JS + WASM, no system binary, so it
-// stays offline and deterministic. A hosted render API (e.g. Kroki) is a
-// possible future fallback but is intentionally not the default.
+/**
+ * Renders generated/graph/model-graph.json to the canonical SVG view
+ * generated/graph/model-graph.svg using the Graphviz WASM engine
+ * (@hpcc-js/wasm): pure JS + WASM, no system binary, so it stays offline and
+ * deterministic. Because rendering is async, init, the operation runner, check,
+ * and query all invoke this script as a child process. Experimental layout
+ * variants (--layout/--all-layouts) land under .ddduck/graph-layouts/, outside
+ * the generated-view contract. A hosted render API (e.g. Kroki) is a possible
+ * future fallback but is intentionally not the default.
+ */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -15,7 +21,8 @@ export const jsonInputPath = path.join("generated", "graph", "model-graph.json")
 
 // Graphviz layout engines worth comparing for a model graph. `dot` is the
 // hierarchical default; the force-directed and radial engines often read better
-// once the ownership tree gets wide. Output goes to `model-graph.<engine>.svg`.
+// once the ownership tree gets wide. Variant output goes to
+// `.ddduck/graph-layouts/model-graph.<engine>.svg`.
 export const LAYOUT_ENGINES = ["dot", "twopi", "circo", "fdp", "sfdp", "neato"];
 
 // Only `dot` and `fdp` do cluster-aware layout. The other engines still *draw*
@@ -32,8 +39,13 @@ export function engineSupportsClusters(engine) {
 export const svgOutputPath = path.join("generated", "graph", "model-graph.svg");
 export const canonicalEngine = "dot";
 
+// Experimental layout variants (`--layout` / `--all-layouts`) are not part of
+// the generated-view contract: `generated/` holds only the canonical views that
+// `ddduck generate` refreshes and `ddduck check` gates. Variants land in the
+// `.ddduck/` tool-metadata area instead, so they can never rot unswept inside
+// `generated/`.
 export function svgOutputPathFor(engine) {
-  return path.join("generated", "graph", `model-graph.${engine}.svg`);
+  return path.join(".ddduck", "graph-layouts", `model-graph.${engine}.svg`);
 }
 
 // Visual vocabulary keyed by the graph's node/edge `kind`. Shapes and fills are
@@ -214,9 +226,14 @@ function edgeStatements(graphEdge, nodeIds) {
   return [edge(graphEdge.from, graphEdge.to, { ...base, label: graphEdge.label ?? graphEdge.kind })];
 }
 
-// Pure translation from the model graph JSON to a deterministic DOT string.
-// `clusters` groups each domain and its owned nodes into a titled box; disable it
-// for engines that draw but do not lay out clusters (they would overlap).
+/**
+ * Pure translation from the model graph JSON to a deterministic DOT string.
+ * `clusters` groups each domain and its owned nodes into a titled box; disable
+ * it for engines that draw but do not lay out clusters (they would overlap).
+ * @param {{modelId?: string, modelName?: string, nodes?: object[], edges?: object[]}} modelGraph - Parsed model-graph.json.
+ * @param {{clusters?: boolean, legend?: boolean}} [options] - Cluster domains into boxes; emit the legend cluster.
+ * @returns {string} The DOT source.
+ */
 export function graphToDot(modelGraph, { clusters = true, legend = clusters } = {}) {
   const nodes = modelGraph.nodes ?? [];
   const edges = modelGraph.edges ?? [];
@@ -254,9 +271,14 @@ function loadGraphviz() {
   return graphvizInstance;
 }
 
-// Render a DOT string to SVG via the Graphviz WASM engine. `engine` selects the
-// layout algorithm. Isolated so the backend can be swapped without touching the
-// translation above.
+/**
+ * Render a DOT string to SVG via the Graphviz WASM engine. `engine` selects
+ * the layout algorithm. Isolated so the backend can be swapped without
+ * touching the translation above.
+ * @param {string} dot - DOT source from graphToDot.
+ * @param {string} [engine] - One of LAYOUT_ENGINES (default "dot").
+ * @returns {Promise<string>} The rendered SVG.
+ */
 export async function renderDotToSvg(dot, engine = "dot") {
   if (!LAYOUT_ENGINES.includes(engine)) {
     throw new Error(`unknown layout engine ${engine}; expected one of ${LAYOUT_ENGINES.join(", ")}`);
@@ -281,13 +303,22 @@ function writeSvg(rootPath, relativePath, svg) {
   return relativePath;
 }
 
-// Build the canonical diagram bytes (dot, clustered, legend). Shared by the
-// writer and the freshness check so both agree byte-for-byte.
+/**
+ * Build the canonical diagram bytes (dot, clustered, legend). Shared by the
+ * writer and the freshness check so both agree byte-for-byte.
+ * @param {object} modelGraph - Parsed model-graph.json.
+ * @returns {Promise<string>} The canonical SVG bytes.
+ */
 export async function buildModelGraphSvg(modelGraph) {
   const dot = graphToDot(modelGraph, { clusters: true, legend: true });
   return renderDotToSvg(dot, canonicalEngine);
 }
 
+/**
+ * Write the canonical generated/graph/model-graph.svg below the product root.
+ * @param {string} rootPath - Product root path.
+ * @returns {Promise<string>} The root-relative path that was written.
+ */
 export async function writeModelGraphSvgCanonical(rootPath) {
   const svg = await buildModelGraphSvg(readModelGraph(rootPath));
   return writeSvg(rootPath, svgOutputPath, svg);
@@ -298,8 +329,14 @@ export async function writeModelGraphSvg(rootPath, engine = "dot") {
   return writeSvg(rootPath, svgOutputPathFor(engine), await renderDotToSvg(dot, engine));
 }
 
-// Render one SVG per layout engine so the variants can be compared side by side.
-// Clusters are emitted only for the engines that lay them out (dot, fdp).
+/**
+ * Render one SVG per layout engine so the variants can be compared side by
+ * side. Clusters are emitted only for the engines that lay them out (dot,
+ * fdp). Variants go to .ddduck/graph-layouts/, not generated/.
+ * @param {string} rootPath - Product root path.
+ * @param {string[]} [engines] - Layout engines to render (default all LAYOUT_ENGINES).
+ * @returns {Promise<string[]>} The root-relative variant paths written.
+ */
 export async function writeModelGraphSvgVariants(rootPath, engines = LAYOUT_ENGINES) {
   const modelGraph = readModelGraph(rootPath);
   const writtenPaths = [];

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -12,6 +13,7 @@ import {
   renderDotToSvg,
   svgOutputPath,
   svgOutputPathFor,
+  writeModelGraphSvg,
 } from "../scripts/generate-graph-svg.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -136,8 +138,27 @@ test("renderDotToSvg produces an SVG document", async () => {
   assert.ok(svg.includes("Member"), "node names should appear in the SVG");
 });
 
-test("svgOutputPathFor names the file after the layout engine", () => {
-  assert.equal(svgOutputPathFor("twopi"), path.join("generated", "graph", "model-graph.twopi.svg"));
+test("svgOutputPathFor keeps experimental layout variants outside generated/", () => {
+  assert.equal(svgOutputPathFor("twopi"), path.join(".ddduck", "graph-layouts", "model-graph.twopi.svg"));
+});
+
+test("writing a layout variant leaves only the canonical views inside generated/", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ddduck-svg-variant-"));
+  try {
+    cpSync(path.join(here, "..", "examples", "reminders", "ddd"), root, { recursive: true });
+
+    const writtenPath = await writeModelGraphSvg(root, "twopi");
+
+    assert.equal(writtenPath, path.join(".ddduck", "graph-layouts", "model-graph.twopi.svg"));
+    assert.match(readFileSync(path.join(root, writtenPath), "utf8"), /<svg/);
+    assert.deepEqual(readdirSync(path.join(root, "generated", "graph")).sort(), [
+      "model-graph.json",
+      "model-graph.ndjson",
+      "model-graph.svg",
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("renderDotToSvg rejects an unknown layout engine", async () => {
