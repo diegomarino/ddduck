@@ -396,6 +396,100 @@ test("product base comparison rejects a deleted historical guarantee", () => {
   assert.match(result.stderr, /MEMBERS-INV-01/);
 });
 
+test("product rejects a node stored in a directory for another kind", () => {
+  const root = writeProduct({ guaranteeStatus: "active" });
+  writeFileSync(
+    path.join(root, "model", "guarantees", "member.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: Concept",
+      "id: concept:member",
+      "model: model:reminders",
+      "ownerDomain: domain:members",
+      "name: Member",
+      "purpose: Identify a member.",
+    ].join("\n"),
+  );
+  writeFileSync(
+    path.join(root, "model", "domains", "members.yaml"),
+    readFileSync(path.join(root, "model", "domains", "members.yaml"), "utf8").replace(
+      "guarantees:",
+      "concepts:\n  - concept:member\nguarantees:",
+    ),
+  );
+
+  const result = runChecker(root);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(
+    result.stderr,
+    /member\.yaml: node kind Concept does not match directory model\/guarantees \(expected Guarantee\)/,
+  );
+});
+
+test("product verifies evidence anchors occur in Markdown targets and keeps non-Markdown anchors free-form", () => {
+  const root = writeProduct({ guaranteeStatus: "active" });
+  writeFileSync(path.join(root, "evidence.md"), "## Member activity\n\nEvidence text.\n");
+  const guaranteePath = path.join(root, "model", "guarantees", "members-inv-01.yaml");
+  writeFileSync(
+    guaranteePath,
+    `${readFileSync(guaranteePath, "utf8")}\nevidence:\n  - path: evidence.md\n    anchor: NoSuchHeadingAnywhere\n    role: source\n`,
+  );
+
+  const missingAnchor = runChecker(root);
+
+  assert.notEqual(missingAnchor.status, 0, missingAnchor.stdout);
+  assert.match(missingAnchor.stderr, /evidence anchor not found in evidence\.md: NoSuchHeadingAnywhere/);
+
+  writeFileSync(
+    guaranteePath,
+    readFileSync(guaranteePath, "utf8").replace(
+      "    anchor: NoSuchHeadingAnywhere\n    role: source\n",
+      "    anchor: Member activity\n    role: source\n  - path: product.yaml\n    anchor: NoSuchHeadingAnywhere\n    role: source\n",
+    ),
+  );
+
+  const resolved = runChecker(root);
+
+  assert.equal(resolved.status, 0, resolved.stderr);
+});
+
+test("product base comparison rejects a resurrected retired guarantee", () => {
+  const base = writeProduct({ guaranteeStatus: "retired", lifecycleDecision: "ADR-001" });
+  const current = writeProduct({ guaranteeStatus: "active" });
+
+  const result = runChecker(current, ["--base", base]);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(result.stderr, /illegal guarantee status transition retired -> active/);
+  assert.match(result.stderr, /members-inv-01\.yaml/);
+});
+
+test("product base comparison rejects tampered closed-guarantee history", () => {
+  const base = writeProduct({ guaranteeStatus: "active" });
+  writeFileSync(
+    path.join(base, "model", "guarantees", "members-inv-01.yaml"),
+    readFileSync(path.join(base, "model", "guarantees", "members-inv-01.yaml"), "utf8").replace(
+      "status: active",
+      ["status: split", "lifecycleDecision: ADR-001", "successors:", "  - MEMBERS-INV-02"].join("\n"),
+    ),
+  );
+  const current = writeProduct({ guaranteeStatus: "active" });
+  writeFileSync(
+    path.join(current, "model", "guarantees", "members-inv-01.yaml"),
+    readFileSync(path.join(current, "model", "guarantees", "members-inv-01.yaml"), "utf8").replace(
+      "status: active",
+      ["status: split", "lifecycleDecision: ADR-002", "successors:", "  - MEMBERS-INV-03"].join("\n"),
+    ),
+  );
+
+  const result = runChecker(current, ["--base", base]);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(result.stderr, /closed guarantee must keep lifecycleDecision ADR-001 from base/);
+  assert.match(result.stderr, /closed guarantee must keep successors MEMBERS-INV-02 from base/);
+});
+
 test("Members and Reminders proving fixture validates with fresh generated output", () => {
   const fixtureRoot = path.join(frameworkRoot, "examples", "reminders", "ddd");
   const checked = runChecker(fixtureRoot);
