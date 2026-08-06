@@ -1,4 +1,4 @@
-{"type":"metadata","schemaVersion":"1","modelId":"model:members-reminders","modelName":"Members and Reminders","nameStatus":"stable","generatedBy":"scripts/generate-graph.mjs","formatVersion":"final"}
+{"type":"metadata","schemaVersion":"1","modelId":"model:members-reminders","modelName":"Members and Reminders","generatedBy":"scripts/generate-graph.mjs","formatVersion":"final"}
 {"type":"node","id":"concept:member","kind":"Concept","name":"Member","ownershipKind":null,"purpose":"Represent a member whose lifecycle determines ordinary visibility and assignability.","model":"model:members-reminders","ownerDomain":"domain:members"}
 {"type":"node","id":"concept:reminder","kind":"Concept","name":"Reminder","ownershipKind":null,"purpose":"Represent a reminder that is created for a designated member.","model":"model:members-reminders","ownerDomain":"domain:reminders"}
 {"type":"node","id":"domain:members","kind":"Domain","name":"Members","ownershipKind":null,"purpose":"Own the lifecycle and ordinary visibility of members.","model":"model:members-reminders","ownerDomain":null}

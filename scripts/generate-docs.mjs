@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/**
+ * Renders the generated Markdown view generated/docs/model-overview.md from a
+ * product root's canonical YAML: domains with their concepts, interfaces, and
+ * active guarantees, then use cases, interfaces, relationships, and decisions.
+ * Inactive (split/retired) guarantees are excluded. buildModelOverview feeds
+ * the freshness gate (check-generated-docs.mjs); writeModelOverview is called
+ * by init and the staged operation runner. Also runnable standalone via --root.
+ */
+
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,12 +18,22 @@ import { resolveProductRoot } from "./lib/product-root-resolver.mjs";
 
 const outputPath = path.join("generated", "docs", "model-overview.md");
 
+/**
+ * Build the model overview Markdown for a product root without writing it.
+ * @param {string} rootPath - Product root path.
+ * @returns {string} The full generated Markdown document.
+ */
 export function buildModelOverview(rootPath) {
   const layout = detectProductLayout(rootPath);
   const graph = loadGraph(layout);
   return renderModelOverview(assembleModelView(graph, findModelId(graph)));
 }
 
+/**
+ * Write generated/docs/model-overview.md below the product root.
+ * @param {string} rootPath - Product root path.
+ * @returns {string} The root-relative path that was written.
+ */
 export function writeModelOverview(rootPath) {
   const output = buildModelOverview(rootPath);
   const absoluteOutputPath = resolveContainedOutput(rootPath, outputPath);
@@ -30,6 +49,14 @@ function loadGraph(layout) {
   };
 }
 
+/**
+ * Assemble the sorted, resolved view of the model that the renderer consumes:
+ * domains with their owned nodes resolved, relationships, decisions, use
+ * cases, and every DomainInterface in the product.
+ * @param {{nodes: Map<string, object>}} graph - Loaded product nodes (active guarantees only).
+ * @param {string} modelId - ID of the single Model node.
+ * @returns {{model: object, domains: object[], relationships: object[], decisions: string[], useCases: object[], interfaces: object[]}} The renderable view.
+ */
 function assembleModelView(graph, modelId) {
   const model = resolveNode(graph, modelId);
   const domains = asArray(model.domains)
@@ -62,8 +89,7 @@ function renderModelOverview(view) {
     "",
     `# ${view.model.name} (\`${view.model.id}\`)`,
     "",
-    `Name status: \`${view.model.nameStatus ?? "stable"}\``,
-    "",
+    ...(view.model.nameStatus === undefined ? [] : [`Name status: \`${view.model.nameStatus}\``, ""]),
     view.model.purpose,
     "",
     "## Domains",

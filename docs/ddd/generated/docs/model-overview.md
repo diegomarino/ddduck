@@ -146,3 +146,5 @@ Own generated exports that adapt canonical model data for external visualization
 - `ADR-004`
 - `ADR-005`
 - `ADR-006`
+- `ADR-007`
+- `ADR-008`

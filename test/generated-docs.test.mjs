@@ -43,6 +43,25 @@ test("generated overview includes model identity, domains, relationships, and de
   assert.match(overview, /- `ADR-001`/);
 });
 
+test("generated overview omits the name-status line when nameStatus is not declared", () => {
+  const fixtureRoot = copyDocumentationFixture();
+  const productPath = path.join(fixtureRoot, "product.yaml");
+  writeFileSync(
+    productPath,
+    readFileSync(productPath, "utf8")
+      .split("\n")
+      .filter((line) => !line.startsWith("nameStatus:"))
+      .join("\n"),
+  );
+
+  const result = runNode(generateDocs, fixtureRoot);
+
+  assert.equal(result.status, 0, result.stderr);
+  const overview = readFileSync(path.join(fixtureRoot, "generated", "docs", "model-overview.md"), "utf8");
+  assert.match(overview, /# ddduck \(`model:ddduck`\)/);
+  assert.doesNotMatch(overview, /Name status:/);
+});
+
 test("generated overview freshness check fails when file is missing", () => {
   const fixtureRoot = copyDocumentationFixture();
   rmSync(path.join(fixtureRoot, "generated"), { recursive: true, force: true });

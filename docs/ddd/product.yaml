@@ -27,5 +27,7 @@ decisions:
   - ADR-004
   - ADR-005
   - ADR-006
+  - ADR-007
+  - ADR-008
 notes:
   - ddduck is the stable framework name; the model ID is now fixed and should not change.

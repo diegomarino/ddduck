@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/**
+ * Builds the generated graph views generated/graph/model-graph.json and
+ * .ndjson from a product root: one record per model node plus ownership,
+ * relationship, and guarantee-reference (requires/preserves/establishes/uses/
+ * guarantees) edges. buildModelGraph also feeds the SVG renderer and the query
+ * engine (with --history including inactive guarantees); the byte-exact
+ * outputs are pinned by check-generated-graph.mjs. Runnable standalone.
+ */
+
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +19,11 @@ import { resolveProductRoot } from "./lib/product-root-resolver.mjs";
 export const jsonOutputPath = path.join("generated", "graph", "model-graph.json");
 export const ndjsonOutputPath = path.join("generated", "graph", "model-graph.ndjson");
 
+/**
+ * Build the serialized JSON and NDJSON graph views without writing them.
+ * @param {string} rootPath - Product root path.
+ * @returns {{json: string, ndjson: string}} The exact bytes of both generated views.
+ */
 export function buildModelGraphOutputs(rootPath) {
   const modelGraph = buildModelGraph(rootPath);
   return {
@@ -18,12 +32,23 @@ export function buildModelGraphOutputs(rootPath) {
   };
 }
 
+/**
+ * Build the model graph object (nodes plus edges) for a product root.
+ * @param {string} rootPath - Product root path.
+ * @param {{history?: boolean}} [options] - With history, inactive guarantees are included.
+ * @returns {{schemaVersion: string, formatVersion: string, modelId: string, modelName: string, generatedBy: string, nodes: object[], edges: object[]}} The assembled graph.
+ */
 export function buildModelGraph(rootPath, { history = false } = {}) {
   const layout = detectProductLayout(rootPath);
   const graph = loadGraph(layout, { history });
   return assembleModelGraph(graph, findModelId(graph));
 }
 
+/**
+ * Write generated/graph/model-graph.json and .ndjson below the product root.
+ * @param {string} rootPath - Product root path.
+ * @returns {string[]} The root-relative paths that were written.
+ */
 export function writeModelGraph(rootPath) {
   const outputs = buildModelGraphOutputs(rootPath);
   const writtenPaths = [];
@@ -63,7 +88,7 @@ function assembleModelGraph(graph, modelId) {
     formatVersion: "final",
     modelId: model.id,
     modelName: requireField(model, "name"),
-    nameStatus: model.nameStatus ?? "stable",
+    ...(model.nameStatus === undefined ? {} : { nameStatus: model.nameStatus }),
     generatedBy: "scripts/generate-graph.mjs",
     nodes,
     edges,

@@ -66,6 +66,24 @@ test("generated graph JSON includes metadata, nodes, ownership edges, and relati
   );
 });
 
+test("generated graph omits nameStatus when the model does not declare it", () => {
+  const fixtureRoot = copyGraphFixture();
+  const productPath = path.join(fixtureRoot, "product.yaml");
+  writeFileSync(
+    productPath,
+    readFileSync(productPath, "utf8")
+      .split("\n")
+      .filter((line) => !line.startsWith("nameStatus:"))
+      .join("\n"),
+  );
+
+  const result = runNode(generateGraph, fixtureRoot);
+
+  assert.equal(result.status, 0, result.stderr);
+  const graph = JSON.parse(readFileSync(path.join(fixtureRoot, "generated", "graph", "model-graph.json"), "utf8"));
+  assert.equal(Object.hasOwn(graph, "nameStatus"), false);
+});
+
 test("generated graph NDJSON includes metadata, node, and edge records", () => {
   const fixtureRoot = copyGraphFixture();
 
