@@ -1,3 +1,12 @@
+/**
+ * Repository-level configuration for ddduck: locates the repository root (the
+ * nearest .git ancestor, else the starting directory) and reads/validates
+ * .ddduck/config.json, whose productRoot pins the repository's default product
+ * root and whose optional ignore list extends the repo scanners' skipped
+ * directory names. Consumed by the product root resolver, init, and the
+ * documentation reference check.
+ */
+
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -5,6 +14,12 @@ const configRelativePath = path.join(".ddduck", "config.json");
 
 export const defaultConfigIgnore = Object.freeze(["vendor", "target", "build", "dist", "__pycache__"]);
 
+/**
+ * Find the nearest ancestor directory containing .git; without one, fall back
+ * to the starting directory itself (never a file path).
+ * @param {string} [startPath] - Directory or file to start from (default cwd).
+ * @returns {string} Absolute repository root, always a directory.
+ */
 export function findRepositoryRoot(startPath = process.cwd()) {
   let current = path.resolve(startPath);
   if (existsSync(current) && !lstatSync(current).isDirectory()) current = path.dirname(current);
@@ -19,6 +34,12 @@ export function findRepositoryRoot(startPath = process.cwd()) {
   }
 }
 
+/**
+ * Load and validate .ddduck/config.json from a repository root; a malformed
+ * config throws, an absent one returns null.
+ * @param {string} repositoryRoot - Repository root to read the config from.
+ * @returns {{schemaVersion: "1", productRoot: string, ignore?: string[]}|null} The validated config or null.
+ */
 export function loadDdduckConfig(repositoryRoot) {
   const configPath = path.join(repositoryRoot, configRelativePath);
   if (!existsSync(configPath)) return null;
@@ -53,6 +74,12 @@ export function loadDdduckConfig(repositoryRoot) {
   return config;
 }
 
+/**
+ * Resolve the ignored directory names for repo scans: the config's ignore list
+ * when present, else the defaults (vendor, target, build, dist, __pycache__).
+ * @param {string} repositoryRoot - Repository root whose config applies.
+ * @returns {string[]} Directory names to skip.
+ */
 export function resolveConfiguredIgnores(repositoryRoot) {
   const config = loadDdduckConfig(repositoryRoot);
   if (!config || config.ignore === undefined) return [...defaultConfigIgnore];

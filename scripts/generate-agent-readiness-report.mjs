@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+/**
+ * CLI wrapper for the agent-readiness report (`--root <product-root>`):
+ * delegates to lib/agent-readiness-report.mjs and prints the JSON report of
+ * missing evidence roles, unresolved references, stale generated views,
+ * orphaned nodes, and ambiguous ownership. Exits 1 when validation failed
+ * (report reduced to unresolvedReferences) or on any error.
+ */
+
 import path from "node:path";
 import { generateAgentReadinessReport } from "./lib/agent-readiness-report.mjs";
 

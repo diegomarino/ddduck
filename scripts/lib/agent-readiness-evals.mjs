@@ -1,3 +1,14 @@
+/**
+ * Agent-readiness eval harness: validates JSONL eval records (strict shape,
+ * unique IDs, repo-contained roots, shell-safe query args), replays each
+ * record's query in-process through runQuery, and checks the record's
+ * candidateEvidence against the resulting document — citations must occur in
+ * it and facts must strictly equal the value at their JSON Pointer, with
+ * <product-root> as the portable placeholder for the resolved root. Consumed
+ * by run-agent-readiness-evals.mjs; results are deterministic (sorted cases
+ * and diagnostics).
+ */
+
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { runQuery } from "../query-model.mjs";
@@ -11,6 +22,11 @@ const candidateEvidenceKeys = new Set(["origin", "citations", "facts"]);
 const citationKeys = new Set(["id", "sourcePath"]);
 const factKeys = new Set(["pointer", "equals"]);
 
+/**
+ * Run every eval record in a JSONL input file and aggregate the case results.
+ * @param {{inputPath: string, repoRoot: string}} options - JSONL input path and the repository root that bounds product roots.
+ * @returns {{schemaVersion: string, passed: boolean, cases: object[]}} Deterministically sorted eval outcome.
+ */
 export function runAgentReadinessEvals({ inputPath, repoRoot }) {
   const resolvedRepoRoot = path.resolve(repoRoot);
   const records = readRecords(inputPath);
@@ -27,6 +43,16 @@ export function runAgentReadinessEvals({ inputPath, repoRoot }) {
   };
 }
 
+/**
+ * Verify candidate evidence against a query document: origin must be "query",
+ * every citation must occur in the document, and every fact's JSON Pointer
+ * must resolve to a value strictly equal to `equals` (after <product-root>
+ * substitution).
+ * @param {object} document - The JSON document produced by the replayed query.
+ * @param {{origin?: string, citations?: object[], facts?: object[]}} candidateEvidence - Evidence claimed by the eval record.
+ * @param {{productRoot?: string}} [context] - Resolved product root for the <product-root> placeholder.
+ * @returns {string[]} Sorted diagnostics; empty when the evidence holds.
+ */
 export function validateCandidateEvidence(document, candidateEvidence, { productRoot } = {}) {
   const diagnostics = [];
   if (!isObject(candidateEvidence)) {
@@ -306,6 +332,12 @@ function collectCitations(value, citations = []) {
   return citations.sort(compareCitations);
 }
 
+/**
+ * Resolve an RFC 6901 JSON Pointer against a document.
+ * @param {unknown} document - The query document to walk.
+ * @param {string} pointer - JSON Pointer ("" selects the whole document).
+ * @returns {{ok: true, value: unknown}|{ok: false, error: string}} The resolved value or the failure reason.
+ */
 function resolveJsonPointer(document, pointer) {
   if (pointer === "") return { ok: true, value: document };
   if (!pointer.startsWith("/")) return { ok: false, error: "must start with /" };

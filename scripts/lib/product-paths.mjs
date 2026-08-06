@@ -1,6 +1,22 @@
+/**
+ * Path-containment guard for every write below a product root. Any file
+ * ddduck creates or publishes (generated views, staged canonical files, lock
+ * and staging paths, eval outputs) resolves its destination through
+ * resolveContainedOutput, which rejects absolute paths, `..` traversal,
+ * escapes above the root, and symbolic links anywhere on the target path — so
+ * no operation can be steered into writing outside the root.
+ */
+
 import { lstatSync, realpathSync } from "node:fs";
 import path from "node:path";
 
+/**
+ * Resolve a root-relative output path to an absolute one, proving it stays
+ * below the real root and traverses or targets no symbolic link.
+ * @param {string} rootPath - The containing root (product root or repo root).
+ * @param {string} relativePath - Root-relative destination path.
+ * @returns {string} The absolute, contained target path.
+ */
 export function resolveContainedOutput(rootPath, relativePath) {
   if (path.isAbsolute(relativePath)) {
     throw new Error("output path must be relative to root");
