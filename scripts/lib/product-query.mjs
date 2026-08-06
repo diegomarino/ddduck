@@ -1,36 +1,58 @@
+/**
+ * The read-only query engine behind `ddduck query`: loadQueryProduct builds a
+ * validated in-memory product (nodes, derived graph edges, source digest,
+ * lifecycle redirects for inactive guarantees) after refusing busy roots and
+ * interrupted-operation leftovers, and the query* functions implement the
+ * node, neighbors, impact, anchors, and spec operations. Anchors and spec
+ * also report generated-view freshness (the SVG checked via subprocess) and
+ * the check/generate verification commands agents should run.
+ */
+
+import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { validateProduct } from "../check-model.mjs";
 import { buildModelOverview } from "../generate-docs.mjs";
 import { buildModelGraph, buildModelGraphOutputs } from "../generate-graph.mjs";
-import { sourceDigestFromSources } from "./context-pack.mjs";
+import { shellQuote, sourceDigestFromSources, unknownModelNodeError } from "./context-pack.mjs";
 import { detectProductLayout, loadProductNodes } from "./product-layout.mjs";
-import { assertProductNotBusy } from "./product-operation.mjs";
+import { assertProductNotBusy, findLeftoverOperationState, generatedPaths } from "./product-operation.mjs";
 
 const impactEdgeKinds = new Set(["owns", "requires", "preserves", "establishes", "uses", "guarantees"]);
 // Only these kinds accept an `evidence` field in their schemas, so source and
 // verification anchors may only be demanded of them.
 const evidenceAnchorKinds = new Set(["DomainInterface", "UseCase", "Guarantee"]);
-const generatedViewPaths = [
-  "generated/docs/model-overview.md",
-  "generated/graph/model-graph.json",
-  "generated/graph/model-graph.ndjson",
-];
+const svgViewPath = "generated/graph/model-graph.svg";
+const svgCheckerScript = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "check-generated-graph-svg.mjs",
+);
 function verificationCommandsFor(product) {
   const root = shellQuote(product.root);
   return [`ddduck check --root ${root}`, `ddduck generate --root ${root}`];
 }
 
-// Emitted commands are copied into shells by humans and agents; roots with
-// spaces or metacharacters must survive that round trip.
-function shellQuote(value) {
-  if (/^[A-Za-z0-9_\-./]+$/.test(value)) return value;
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
+/**
+ * Load the queryable product for a root: refuse busy or interrupted state,
+ * validate the source (documentation excluded), and assemble nodes, edges,
+ * source paths, the sha256 source digest, decisions, and policies.
+ * @param {string} rootPath - Product root path.
+ * @param {{history?: boolean}} [options] - With history, inactive guarantees stay in `nodes`; otherwise they become lifecycleRedirects.
+ * @returns {{root: string, rootModelId: string, nodes: Map<string, object>, sourcePaths: Map<string, string>, sourceDigest: string, edges: object[], lifecycleRedirects: Map<string, object>, decisions: Map<string, string>, policies: string[]}} The loaded query product.
+ */
 export function loadQueryProduct(rootPath, { history = false } = {}) {
   const layout = detectProductLayout(rootPath);
   assertProductNotBusy(layout.root);
+  // Leftover state from an interrupted mutation means the snapshot may be
+  // partially published; refuse to serve a digest over it, exactly like check.
+  const leftover = findLeftoverOperationState(layout.root);
+  if (leftover) {
+    const error = new Error(`An interrupted ddduck operation left ${leftover.entries.join(", ")} in ${layout.root}`);
+    error.nextAction = `Run ddduck generate --root ${shellQuote(layout.root)} to reclaim the interrupted operation state, then retry the query.`;
+    throw error;
+  }
   const check = validateProduct(layout.root, { includeDocumentation: false });
   if (check.errors.length > 0) throw new Error(check.errors.join("\n"));
   const loaded = loadProductNodes(layout);
@@ -69,6 +91,14 @@ export function loadQueryProduct(rootPath, { history = false } = {}) {
   };
 }
 
+/**
+ * Answer `query node`: the full node, or a lifecycleRedirect for an inactive
+ * guarantee ID.
+ * @param {object} product - Product from loadQueryProduct.
+ * @param {string} id - Model node ID.
+ * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @returns {object} The query document.
+ */
 export function queryNode(product, id, { history = false } = {}) {
   const node = product.nodes.get(id);
   if (node) {
@@ -78,15 +108,23 @@ export function queryNode(product, id, { history = false } = {}) {
   if (lifecycleRedirect) {
     return envelope(product, "node", id, history, { lifecycleRedirect });
   }
-  throw new Error(`Unknown model node ${id}`);
+  throw unknownModelNodeError(product, id);
 }
 
+/**
+ * Answer `query neighbors`: every incoming and outgoing edge of a node with a
+ * summary of the peer node on each edge.
+ * @param {object} product - Product from loadQueryProduct.
+ * @param {string} id - Model node ID.
+ * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @returns {object} The query document.
+ */
 export function queryNeighbors(product, id, { history = false } = {}) {
   const node = product.nodes.get(id);
   if (!node) {
     const lifecycleRedirect = product.lifecycleRedirects.get(id);
     if (lifecycleRedirect) return envelope(product, "neighbors", id, history, { lifecycleRedirect });
-    throw new Error(`Unknown model node ${id}`);
+    throw unknownModelNodeError(product, id);
   }
   const incoming = product.edges
     .filter((edge) => edge.to === id)
@@ -103,12 +141,21 @@ export function queryNeighbors(product, id, { history = false } = {}) {
   });
 }
 
+/**
+ * Answer `query impact`: breadth-first walk of everything that depends on the
+ * node, following owns/requires/preserves/establishes/uses/guarantees edges
+ * backwards, with each hit tagged by depth.
+ * @param {object} product - Product from loadQueryProduct.
+ * @param {string} id - Model node ID.
+ * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @returns {object} The query document.
+ */
 export function queryImpact(product, id, { history = false } = {}) {
   const node = product.nodes.get(id);
   if (!node) {
     const lifecycleRedirect = product.lifecycleRedirects.get(id);
     if (lifecycleRedirect) return envelope(product, "impact", id, history, { lifecycleRedirect });
-    throw new Error(`Unknown model node ${id}`);
+    throw unknownModelNodeError(product, id);
   }
 
   const visited = new Set([id]);
@@ -136,12 +183,22 @@ export function queryImpact(product, id, { history = false } = {}) {
   });
 }
 
+/**
+ * Answer `query anchors`: the node's declared evidence anchors, reachable
+ * decisions, executed policies, generated-view freshness, verification
+ * commands, and which evidence roles (source/decision/verification) are still
+ * missing for kinds that expect them.
+ * @param {object} product - Product from loadQueryProduct.
+ * @param {string} id - Model node ID.
+ * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @returns {object} The query document.
+ */
 export function queryAnchors(product, id, { history = false } = {}) {
   const node = product.nodes.get(id);
   if (!node) {
     const lifecycleRedirect = product.lifecycleRedirects.get(id);
     if (lifecycleRedirect) return envelope(product, "anchors", id, history, { lifecycleRedirect });
-    throw new Error(`Unknown model node ${id}`);
+    throw unknownModelNodeError(product, id);
   }
 
   const declaredAnchors = [...(node.evidence ?? [])].sort(byAnchor);
@@ -167,6 +224,13 @@ export function queryAnchors(product, id, { history = false } = {}) {
   });
 }
 
+/**
+ * Answer `query spec`: the root Model node, its owned Domains, generated-view
+ * freshness, and the verification commands.
+ * @param {object} product - Product from loadQueryProduct.
+ * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @returns {object} The query document.
+ */
 export function querySpec(product, { history = false } = {}) {
   const root = product.nodes.get(product.rootModelId);
   if (!root) throw new Error(`Unknown model node ${product.rootModelId}`);
@@ -252,10 +316,28 @@ function generatedViews(product) {
     ["generated/graph/model-graph.json", outputs.json],
     ["generated/graph/model-graph.ndjson", outputs.ndjson],
   ]);
-  return generatedViewPaths.map((relativePath) => ({
+  return generatedPaths.map((relativePath) => ({
     path: relativePath,
-    freshness: readGeneratedView(product.root, relativePath) === expectedByPath.get(relativePath) ? "fresh" : "stale",
+    freshness:
+      relativePath === svgViewPath
+        ? svgViewFreshness(product.root)
+        : readGeneratedView(product.root, relativePath) === expectedByPath.get(relativePath)
+          ? "fresh"
+          : "stale",
   }));
+}
+
+// The canonical SVG is rendered by the async Graphviz WASM engine, so its
+// freshness is checked in a child process to keep queries synchronous
+// (mirrors the check and generate subprocesses).
+function svgViewFreshness(root) {
+  const result = spawnSync(process.execPath, [svgCheckerScript, "--root", root], { encoding: "utf8" });
+  if (result.error) {
+    throw new Error(`Failed to run the model graph SVG check for ${root}: ${result.error.message}`);
+  }
+  if (result.status === 0) return "fresh";
+  if (/missing or stale/.test(result.stderr ?? "")) return "stale";
+  throw new Error(`Failed to run the model graph SVG check for ${root}: ${(result.stderr ?? "").trim()}`);
 }
 
 function readGeneratedView(root, relativePath) {

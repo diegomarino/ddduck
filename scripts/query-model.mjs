@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 
-import path from "node:path";
+/**
+ * Implements `ddduck query`, the read-only query surface: dispatches the
+ * operations node, neighbors, impact, anchors, spec, and context to
+ * lib/product-query.mjs and lib/context-pack.mjs, emitting exactly one JSON
+ * document on stdout. The product root auto-resolves (enclosing directory,
+ * config, or unique discovery) unless --root is passed; busy or interrupted
+ * roots are refused before any answer is served. Also imported by ddduck.mjs
+ * and the agent-readiness evals as the runQuery entry point.
+ */
+
 import { fileURLToPath } from "node:url";
 import { resolveContextPack } from "./lib/context-pack.mjs";
 import { resolveProductRoot } from "./lib/product-root-resolver.mjs";
@@ -14,6 +23,12 @@ import {
 } from "./lib/product-query.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
 
+/**
+ * Parse and run one query invocation, writing the JSON document to stdout.
+ * @param {string[]} args - Arguments after the `query` command word.
+ * @param {{cwd?: string, stdout?: {write: (chunk: string) => unknown}}} [io] - Working directory for root resolution and the output stream (used by the evals harness to capture output).
+ * @returns {void}
+ */
 export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } = {}) {
   if (args.includes("--help")) {
     stdout.write(renderHelp("query"));
@@ -30,14 +45,10 @@ export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } 
   const ids = options.id;
   const id = ids[0];
   if (operation !== "context" && ids.length > 1) throw new CliUsageError(`query ${operation} accepts exactly one --id`);
-  if (operation === "context") {
-    if (options.history) throw new CliUsageError("query context does not support --history");
-    if (!options.root) throw new CliUsageError("query context requires --root <product-root>");
-  }
+  if (operation === "context" && options.history) throw new CliUsageError("query context does not support --history");
   if (operation !== "spec" && !id) throw new CliUsageError(`query ${operation} requires --id <model-node-id>`);
 
-  const root =
-    operation === "context" ? path.resolve(cwd, options.root) : resolveProductRoot({ cwd, explicitRoot: options.root });
+  const root = resolveProductRoot({ cwd, explicitRoot: options.root });
   const product = loadQueryProduct(root, { history: options.history });
   if (operation === "spec" && id && id !== product.rootModelId) {
     throw new CliUsageError(`query spec --id must be ${product.rootModelId}`);

@@ -126,6 +126,8 @@ test("query rejects unknown IDs and treats --json as an accepted no-op", () => {
   const unknown = runDdd(["query", "node", "--id", "concept:missing", "--root", provingFixture, "--json"]);
   assert.notEqual(unknown.status, 0);
   assert.match(unknown.stderr, /Unknown model node concept:missing/);
+  assert.match(unknown.stderr, /Next: Run ddduck query spec --root .* to list model nodes\./);
+  assert.doesNotMatch(unknown.stderr, /correct the input/);
 
   const withoutJson = runDdd(["query", "node", "--id", "domain:members", "--root", provingFixture]);
   assert.equal(withoutJson.status, 0, withoutJson.stderr);
@@ -255,6 +257,7 @@ test("query anchors preserves declared anchor text and makes absent evidence exp
     { path: "generated/docs/model-overview.md", freshness: "fresh" },
     { path: "generated/graph/model-graph.json", freshness: "fresh" },
     { path: "generated/graph/model-graph.ndjson", freshness: "fresh" },
+    { path: "generated/graph/model-graph.svg", freshness: "fresh" },
   ]);
   assert.deepEqual(document.result.verificationCommands, [
     `ddduck check --root ${realpathSync(provingFixture)}`,
@@ -313,6 +316,7 @@ test("query spec returns the canonical root, owned domains, generated freshness,
     { path: "generated/docs/model-overview.md", freshness: "fresh" },
     { path: "generated/graph/model-graph.json", freshness: "fresh" },
     { path: "generated/graph/model-graph.ndjson", freshness: "fresh" },
+    { path: "generated/graph/model-graph.svg", freshness: "fresh" },
   ]);
   assert.deepEqual(document.result.verificationCommands, [
     `ddduck check --root ${realpathSync(provingFixture)}`,
@@ -405,7 +409,34 @@ test("query spec reports stale generated views", () => {
     { path: "generated/docs/model-overview.md", freshness: "fresh" },
     { path: "generated/graph/model-graph.json", freshness: "stale" },
     { path: "generated/graph/model-graph.ndjson", freshness: "fresh" },
+    { path: "generated/graph/model-graph.svg", freshness: "fresh" },
   ]);
+});
+
+test("query spec freshness for the canonical graph SVG matches the check gate", () => {
+  const repo = mkdtempSync(path.join(tmpdir(), "ddduck-query-svg-freshness-"));
+  const root = path.join(repo, "ddd");
+  cpSync(provingFixture, root, { recursive: true });
+  writeFileSync(path.join(root, "generated", "graph", "model-graph.svg"), "<svg>stale</svg>\n");
+
+  const staleSpec = runDdd(["query", "spec", "--root", root, "--json"]);
+  assert.equal(staleSpec.status, 0, staleSpec.stderr);
+  assert.deepEqual(
+    JSON.parse(staleSpec.stdout).result.generatedViews.find((view) => view.path === "generated/graph/model-graph.svg"),
+    { path: "generated/graph/model-graph.svg", freshness: "stale" },
+  );
+  const staleCheck = runDdd(["check", "--root", root]);
+  assert.notEqual(staleCheck.status, 0, "check must fail while query spec reports the SVG stale");
+  assert.match(staleCheck.stderr, /model-graph\.svg is missing or stale/);
+
+  assert.equal(runDdd(["generate", "--root", root]).status, 0);
+  const freshSpec = runDdd(["query", "spec", "--root", root, "--json"]);
+  assert.equal(freshSpec.status, 0, freshSpec.stderr);
+  assert.deepEqual(
+    JSON.parse(freshSpec.stdout).result.generatedViews.find((view) => view.path === "generated/graph/model-graph.svg"),
+    { path: "generated/graph/model-graph.svg", freshness: "fresh" },
+  );
+  assert.equal(runDdd(["check", "--root", root]).status, 0);
 });
 
 function retiredGuaranteeFixture() {

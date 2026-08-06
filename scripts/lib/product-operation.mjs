@@ -1,3 +1,13 @@
+/**
+ * The locked, staged mutation runner behind every product-changing ddduck
+ * command (generate, create/move/split/retire). Holds the invariants: one
+ * operation at a time per product root (.ddduck-operation.lock, reclaimable
+ * only when its owner PID is dead), all edits validated in a staging copy
+ * before any canonical or generated file is published, and canonical YAML
+ * rewritten comment-preservingly. Also exports the canonical generatedPaths
+ * list and the busy/leftover-state probes used by check and query.
+ */
+
 import { spawnSync } from "node:child_process";
 import {
   closeSync,
@@ -16,7 +26,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stringify } from "yaml";
+import { isScalar, parseDocument, stringify } from "yaml";
 import { checkGeneratedDocs } from "../check-generated-docs.mjs";
 import { checkGeneratedGraph } from "../check-generated-graph.mjs";
 import { validateProduct } from "../check-model.mjs";
@@ -29,19 +39,23 @@ import { nonProductSourceEntries } from "./product-root-resolver.mjs";
 const lockRelativePath = ".ddduck-operation.lock";
 const reclaimRelativePath = ".ddduck-operation.reclaim";
 const stagingPrefix = ".ddduck-operation-stage-";
-const generatedPaths = Object.freeze([
+// The canonical generated views: one list consumed by mutation results, query
+// freshness, the check gate, and the docs. The SVG is rendered by the Graphviz
+// WASM engine, which is async, so we produce it in a child process to keep this
+// runner synchronous (mirrors the check subprocess).
+export const generatedPaths = Object.freeze([
   "generated/docs/model-overview.md",
   "generated/graph/model-graph.json",
   "generated/graph/model-graph.ndjson",
+  "generated/graph/model-graph.svg",
 ]);
-// The canonical SVG is published atomically alongside the reported outputs, but
-// kept off `generatedPaths` so it stays out of the CLI/query freshness contract.
-// It is rendered by the Graphviz WASM engine, which is async, so we produce it in
-// a child process to keep this runner synchronous (mirrors the check subprocess).
-const auxiliaryGeneratedPaths = Object.freeze(["generated/graph/model-graph.svg"]);
 const svgGeneratorScript = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "generate-graph-svg.mjs");
 const excludedSourceEntries = new Set([...nonProductSourceEntries, lockRelativePath, reclaimRelativePath]);
 
+/**
+ * Raised when a product root's operation lock is held; carries exitCode 2 when
+ * the holder is a live process (the one retryable failure).
+ */
 export class ProductBusyError extends Error {
   constructor(root, lockPath, ownerPid) {
     const holder = ownerPid ? ` (held by running process ${ownerPid})` : "";
@@ -50,17 +64,27 @@ export class ProductBusyError extends Error {
     this.nextAction = ownerPid
       ? `Wait for process ${ownerPid} to finish and retry, or delete ${lockPath} and retry if that process is not a ddduck operation.`
       : `If no other ddduck operation is running on this product, delete ${lockPath} and retry.`;
+    // Contention with a running ddduck operation is the one retryable failure;
+    // exit code 2 lets callers retry it without string-matching stderr. Every
+    // other failure, including a lock without a live owner, stays exit 1.
+    if (ownerPid) this.exitCode = 2;
   }
 }
 
+/**
+ * Run one mutation against a product root: acquire the lock, sweep dead
+ * reclaim claims and orphaned staging, copy the source into staging, apply the
+ * transform's replacement plan, validate the staged product, regenerate every
+ * generated view (SVG via subprocess), then publish canonical and generated
+ * files back file-by-file. The lock and staging are always cleaned up.
+ * @param {{root: string, transform: (snapshot: {nodes: object[], canonicalPaths: Record<string, string>}) => {operation: string, affectedIds: string[], replacements: {path: string, value: object}[]}}} params - Product root and plan-building transform.
+ * @returns {{operation: string, root: string, affectedIds: string[], canonicalPaths: string[], generatedPaths: string[]}} The published operation result.
+ */
 export function runProductOperation({ root, transform }) {
   if (typeof transform !== "function") throw new TypeError("product operation requires a transform function");
   const normalizedRoot = realpathSync(path.resolve(root));
   const lockPath = resolveContainedOutput(normalizedRoot, lockRelativePath);
   const publishGeneratedTargets = generatedPaths.map((relativePath) =>
-    resolveContainedOutput(normalizedRoot, relativePath),
-  );
-  const publishAuxiliaryTargets = auxiliaryGeneratedPaths.map((relativePath) =>
     resolveContainedOutput(normalizedRoot, relativePath),
   );
   let lockAcquired = false;
@@ -77,7 +101,7 @@ export function runProductOperation({ root, transform }) {
     const snapshot = loadProductSnapshot(detectProductLayout(stagingRoot));
     const plan = validatePlan(transform(snapshot));
     const canonicalPaths = applyReplacements(stagingRoot, plan.replacements);
-    validateStagedProduct(stagingRoot);
+    validateStagedProduct(stagingRoot, normalizedRoot);
     writeModelOverview(stagingRoot);
     writeModelGraph(stagingRoot);
     renderModelGraphSvg(stagingRoot);
@@ -96,19 +120,12 @@ export function runProductOperation({ root, transform }) {
         relativePath,
         targetPath: publishGeneratedTargets[index],
       })),
-      ...auxiliaryGeneratedPaths.map((relativePath, index) => ({
-        relativePath,
-        targetPath: publishAuxiliaryTargets[index],
-      })),
     ]);
     for (let index = 0; index < canonicalPaths.length; index += 1) {
       copyPublishedFile(stagingRoot, canonicalPaths[index], publishCanonicalTargets[index]);
     }
     for (let index = 0; index < generatedPaths.length; index += 1) {
       copyPublishedFile(stagingRoot, generatedPaths[index], publishGeneratedTargets[index]);
-    }
-    for (let index = 0; index < auxiliaryGeneratedPaths.length; index += 1) {
-      copyPublishedFile(stagingRoot, auxiliaryGeneratedPaths[index], publishAuxiliaryTargets[index]);
     }
 
     return {
@@ -278,7 +295,12 @@ function readLockOwner(lockPath) {
   return { state: "unknown" };
 }
 
-function isProcessAlive(pid) {
+/**
+ * Probe whether a PID belongs to a live process (signal 0; EPERM counts as alive).
+ * @param {number} pid - Process ID recorded in a lock, claim, or init stage name.
+ * @returns {boolean} True unless the process is definitely gone (ESRCH).
+ */
+export function isProcessAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
@@ -310,6 +332,12 @@ function sweepOrphanedStaging(root) {
   }
 }
 
+/**
+ * Throw ProductBusyError if the product's operation lock is held by a live
+ * process; used by read paths (check, query) that must not run mid-mutation.
+ * @param {string} root - Product root path.
+ * @returns {void}
+ */
 export function assertProductNotBusy(root) {
   const normalizedRoot = realpathSync(path.resolve(root));
   const lockPath = path.join(normalizedRoot, lockRelativePath);
@@ -319,6 +347,13 @@ export function assertProductNotBusy(root) {
   }
 }
 
+/**
+ * List interrupted-operation debris (ownerless lock, dead reclaim claims,
+ * staging directories) that a future operation would reclaim; live locks are
+ * not leftovers.
+ * @param {string} root - Product root path.
+ * @returns {{root: string, entries: string[]}|null} The leftover entries, or null when the root is clean.
+ */
 export function findLeftoverOperationState(root) {
   const normalizedRoot = realpathSync(path.resolve(root));
   const lockPath = path.join(normalizedRoot, lockRelativePath);
@@ -400,11 +435,54 @@ function applyReplacements(stagingRoot, replacements) {
     }
     const target = resolveContainedOutput(stagingRoot, relativePath);
     mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, stringify(replacement.value));
+    writeFileSync(target, serializeReplacement(target, relativePath, replacement.value));
     seenPaths.add(relativePath);
     canonicalPaths.push(relativePath);
   }
   return canonicalPaths.sort();
+}
+
+/**
+ * Rewrite an existing canonical file by editing its parsed YAML document key by
+ * key instead of re-serializing the plan value wholesale, so authored comments
+ * and formatting outside the keys a mutation actually changes survive. New
+ * files have no authored content to preserve and take the plain serialization.
+ * Staged validation still covers the exact published bytes: this runs before
+ * validateStagedProduct, and publication copies these staged bytes verbatim.
+ * @param {string} target - Absolute staged path of the canonical file.
+ * @param {string} relativePath - Root-relative canonical path (for diagnostics).
+ * @param {object} value - The replacement YAML mapping from the operation plan.
+ * @returns {string} The staged file's new YAML source.
+ */
+function serializeReplacement(target, relativePath, value) {
+  let source;
+  try {
+    source = readFileSync(target, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return stringify(value);
+  }
+  const document = parseDocument(source, { keepSourceTokens: true, strict: true, uniqueKeys: true });
+  if (document.errors.length > 0) {
+    throw new Error(
+      `invalid YAML in canonical replacement ${relativePath}: ${document.errors.map((error) => error.message).join("; ")}`,
+    );
+  }
+  const current = document.toJSON();
+  if (current === null || typeof current !== "object" || Array.isArray(current)) return stringify(value);
+  for (const [key, next] of Object.entries(value)) {
+    if (key in current && JSON.stringify(current[key]) === JSON.stringify(next)) continue;
+    const existing = document.get(key, true);
+    if (isScalar(existing) && (next === null || typeof next !== "object")) {
+      existing.value = next;
+    } else {
+      document.set(key, document.createNode(next));
+    }
+  }
+  for (const key of Object.keys(current)) {
+    if (!(key in value)) document.delete(key);
+  }
+  return document.toString();
 }
 
 function normalizeCanonicalPath(relativePath) {
@@ -419,9 +497,40 @@ function normalizeCanonicalPath(relativePath) {
   return normalized;
 }
 
-function validateStagedProduct(stagingRoot) {
+function validateStagedProduct(stagingRoot, root) {
   const check = validateProduct(stagingRoot);
-  if (check.errors.length > 0) throw new Error(check.errors.join("\n"));
+  if (check.errors.length > 0) throw validationFailureError(root, check.errors);
+}
+
+/**
+ * Build the error for a failed product validation. Validation failures are
+ * model failures, not CLI-input failures, so the Next: line must point at the
+ * real unblock instead of the per-command usage hint: referential lifecycle
+ * blockers name the referencing file and the edit-regenerate-retry path,
+ * base-retention failures name the sanctioned remedies, and everything else is
+ * a source-file fix.
+ * @param {string} root - Product root the validation ran against.
+ * @param {string[]} errors - Checker diagnostics, one per line.
+ * @returns {Error} Error with a tailored nextAction property.
+ */
+export function validationFailureError(root, errors) {
+  const error = new Error(`Validation failed for ${root}:\n${errors.join("\n")}`);
+  const referencingFiles = [
+    ...new Set(
+      errors
+        .filter((line) => /: (?:non-effective guarantee|split successor must be) /.test(line))
+        .map((line) => line.slice(0, line.indexOf(":"))),
+    ),
+  ];
+  if (referencingFiles.length > 0) {
+    error.nextAction = `Edit ${referencingFiles.join(", ")} to remove or replace the blocking guarantee reference, run ddduck generate --root ${root}, and retry.`;
+  } else if (errors.some((line) => line.startsWith("guarantee disappeared from the product"))) {
+    error.nextAction =
+      "Restore the guarantee record from the base product, or record the transition with ddduck retire or ddduck split, then re-run ddduck check.";
+  } else {
+    error.nextAction = "Fix the listed source files, then re-run ddduck check.";
+  }
+  return error;
 }
 
 function copyPublishedFile(stagingRoot, relativePath, targetPath) {

@@ -1,3 +1,13 @@
+/**
+ * Resolves which product root a rootless command addresses, in priority
+ * order: explicit --root, the enclosing product root of the cwd, the
+ * productRoot pinned in .ddduck/config.json, then repository-wide discovery
+ * (a unique primary candidate, or a unique example candidate when run inside
+ * it; test/ and fixtures/ candidates are ignored, ambiguity is an error).
+ * Also owns resolveInitDestination, the init staging-name prefix, and the
+ * nonProductSourceEntries list that mutation staging excludes.
+ */
+
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { parseDocument } from "yaml";
@@ -17,6 +27,12 @@ export const nonProductSourceEntries = Object.freeze([
   ".worktrees",
 ]);
 
+/**
+ * Resolve the product root for a command: explicit root, enclosing root,
+ * configured root, or unique discovery — otherwise throw with candidates.
+ * @param {{cwd?: string, explicitRoot?: string}} [options] - Working directory and the --root override.
+ * @returns {string} The real (symlink-resolved) product root path.
+ */
 export function resolveProductRoot({ cwd = process.cwd(), explicitRoot } = {}) {
   if (explicitRoot) return validateSelectedRoot(path.resolve(cwd, explicitRoot), "Explicit product root");
 
@@ -41,9 +57,16 @@ export function resolveProductRoot({ cwd = process.cwd(), explicitRoot } = {}) {
   if (relevantExamples.length === 1) return relevantExamples[0].root;
 
   if (candidates.length > 1) throw ambiguousRoots(candidates);
+  if (candidates.length === 1) throw irrelevantCandidate(candidates[0]);
   throw new Error("No ddduck product root found; pass --root <product-root>");
 }
 
+/**
+ * Resolve where `ddduck init` publishes: the explicit destination, the
+ * configured productRoot, or `ddd` under the current directory.
+ * @param {{cwd?: string, explicitDestination?: string}} [options] - Working directory and the optional positional destination.
+ * @returns {string} Absolute destination path.
+ */
 export function resolveInitDestination({ cwd = process.cwd(), explicitDestination } = {}) {
   if (explicitDestination) return path.resolve(cwd, explicitDestination);
   const repositoryRoot = findRepositoryRoot(cwd);
@@ -134,6 +157,13 @@ function passesProductValidation(root) {
   }
 }
 
+/**
+ * Test whether a directory has the shape of a product root: a product.yaml
+ * that is a valid schemaVersion-1 Model with a model:<slug> ID, plus a model/
+ * directory. Shape only; full validation happens elsewhere.
+ * @param {string} root - Candidate directory.
+ * @returns {boolean} True when the directory looks like a product root.
+ */
 function hasProductRootShape(root) {
   try {
     const productPath = path.join(root, "product.yaml");
@@ -150,6 +180,16 @@ function hasProductRootShape(root) {
   } catch {
     return false;
   }
+}
+
+// A repository whose only candidate is an example resolves implicitly only
+// from inside it. From anywhere else, name the candidate that was found and
+// rejected as irrelevant (mirroring the ambiguity message) instead of claiming
+// no product exists.
+function irrelevantCandidate(candidate) {
+  return new Error(
+    `No ddduck product root selected; found ${candidate.classification} candidate: ${candidate.root}${candidate.valid ? "" : " (fails validation)"}. Pass --root ${candidate.root} or run inside it.`,
+  );
 }
 
 function ambiguousRoots(candidates) {

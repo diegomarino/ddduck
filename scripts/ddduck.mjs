@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/**
+ * Entry point for the `ddduck` CLI (the package bin). Dispatches the commands
+ * init, check, generate, query, install, and the guarantee lifecycle commands
+ * create/move/split/retire. Mutations run through the locked, staged operation
+ * runner in lib/product-operation.mjs; init publishes a fresh product root via
+ * PID-stamped staging; check delegates to check-model.mjs plus the generated
+ * freshness gates. Errors leave through writeCliError with a Next: action line.
+ */
+
 import {
   existsSync,
   mkdirSync,
@@ -10,6 +19,7 @@ import {
   renameSync,
   rmSync,
   rmdirSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -20,10 +30,17 @@ import { writeModelOverview } from "./generate-docs.mjs";
 import { writeModelGraph } from "./generate-graph.mjs";
 import { checkGeneratedDocs } from "./check-generated-docs.mjs";
 import { checkGeneratedGraph } from "./check-generated-graph.mjs";
-import { assertProductNotBusy, findLeftoverOperationState, runProductOperation } from "./lib/product-operation.mjs";
+import {
+  assertProductNotBusy,
+  findLeftoverOperationState,
+  generatedPaths,
+  isProcessAlive,
+  runProductOperation,
+  validationFailureError,
+} from "./lib/product-operation.mjs";
 import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveInitDestination, resolveProductRoot } from "./lib/product-root-resolver.mjs";
-import { defaultConfigIgnore, findRepositoryRoot } from "./lib/ddduck-config.mjs";
+import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
 import { installSkill } from "./lib/skill-installer.mjs";
 import { runQuery } from "./query-model.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
@@ -38,6 +55,11 @@ try {
   writeCliError(error, { nextAction: nextActionFor(cliArgs) });
 }
 
+/**
+ * Dispatch one parsed CLI invocation to its command handler.
+ * @param {string[]} args - Raw CLI arguments (process.argv minus node and script).
+ * @returns {void}
+ */
 function run(args) {
   if (args.length === 1 && args[0] === "--help") {
     process.stdout.write(renderHelp());
@@ -81,6 +103,12 @@ function run(args) {
   }
 }
 
+/**
+ * Implement `ddduck install skill update-ddduck-specs`: install the bundled
+ * host skill adapter and .ddduck/agent-skills.lock.json into --repo.
+ * @param {string[]} args - Arguments after the `install` command word.
+ * @returns {void}
+ */
 function install(args) {
   const { positionals, options } = parseCommandArgs(args, {
     positionals: { min: 2, max: 2 },
@@ -92,6 +120,13 @@ function install(args) {
   }
   const packageVersion = JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).version;
   const repository = path.resolve(options.repo ?? process.cwd());
+  // A typo'd --repo must fail instead of silently manufacturing a directory
+  // tree (and a lock) at the wrong path while the real repository gets nothing.
+  if (!existsSync(repository) || !statSync(repository).isDirectory()) {
+    throw new CliUsageError(`install requires an existing repository directory: ${repository}`, {
+      nextAction: "Pass --repo <existing-repository-root> and retry.",
+    });
+  }
   const result = installSkill({
     repository,
     skillName,
@@ -104,6 +139,14 @@ function install(args) {
   );
 }
 
+/**
+ * Implement `ddduck init`: build a new product root (canonical directories,
+ * product.yaml, all generated views) in a PID-stamped staging directory beside
+ * the destination, then publish it atomically via rename and write
+ * .ddduck/config.json if absent.
+ * @param {string[]} args - Arguments after the `init` command word.
+ * @returns {{result: object, json: boolean}} The operation result and whether --json was requested.
+ */
 function initialize(args) {
   const { positionals, options } = parseCommandArgs(args, {
     positionals: { min: 0, max: 1 },
@@ -112,7 +155,9 @@ function initialize(args) {
   const destination = resolveInitDestination({ explicitDestination: positionals[0] });
   const productId = requiredOption(options, "id", "init requires --id model:<product-id>");
   if (!/^model:[a-z0-9][a-z0-9-]*$/.test(productId)) {
-    throw new Error(`Invalid product ID ${JSON.stringify(productId)}`);
+    throw new Error(
+      `Invalid product ID ${JSON.stringify(productId)}; expected model:<lowercase-slug> (for example model:library)`,
+    );
   }
 
   mkdirSync(path.dirname(destination), { recursive: true });
@@ -121,14 +166,19 @@ function initialize(args) {
   }
 
   // Stage names embed the destination so concurrent inits to sibling
-  // destinations never sweep each other's live staging directories.
+  // destinations never sweep each other's live staging directories, and the
+  // creating PID so concurrent inits to the SAME destination only sweep stages
+  // whose creator is dead (mirroring the mutation lock's reclaim rule). Stages
+  // without a parseable live PID are interrupted-init debris and get swept.
   const destinationStagePrefix = `${initStagingPrefix}${path.basename(destination)}-`;
   for (const entry of readdirSync(path.dirname(destination))) {
-    if (entry.startsWith(destinationStagePrefix)) {
-      rmSync(path.join(path.dirname(destination), entry), { recursive: true, force: true });
-    }
+    if (!entry.startsWith(destinationStagePrefix)) continue;
+    const stagePid = Number.parseInt(entry.slice(destinationStagePrefix.length).match(/^(\d+)-/)?.[1] ?? "", 10);
+    if (Number.isInteger(stagePid) && stagePid > 0 && isProcessAlive(stagePid)) continue;
+    rmSync(path.join(path.dirname(destination), entry), { recursive: true, force: true });
   }
-  const stagingRoot = mkdtempSync(path.join(path.dirname(destination), destinationStagePrefix));
+  const stagingRoot = mkdtempSync(path.join(path.dirname(destination), `${destinationStagePrefix}${process.pid}-`));
+  let config;
   try {
     for (const directory of ["domains", "concepts", "relationships", "use-cases", "interfaces", "guarantees"]) {
       mkdirSync(resolveContainedOutput(stagingRoot, path.join("model", directory)), { recursive: true });
@@ -145,10 +195,22 @@ function initialize(args) {
       decisions: [],
     });
     refreshDerivedOutput(stagingRoot);
-    if (existsSync(destination)) rmdirSync(destination);
-    renameSync(stagingRoot, destination);
     try {
-      writeConfigIfAbsent(destination);
+      if (existsSync(destination)) rmdirSync(destination);
+      renameSync(stagingRoot, destination);
+    } catch (error) {
+      // A concurrent init to the same destination can publish between the
+      // emptiness check above and this rename; name the collision instead of
+      // surfacing the raw filesystem error.
+      if (error.code === "ENOTEMPTY" || error.code === "EEXIST") {
+        throw new Error(
+          `Refusing to initialize non-empty directory ${destination}; another init published it concurrently`,
+        );
+      }
+      throw error;
+    }
+    try {
+      config = writeConfigIfAbsent(destination);
     } catch (error) {
       // Writing the config is the final publish step. If it fails (for example a
       // regular file already occupies the .ddduck config path), roll back the
@@ -160,6 +222,7 @@ function initialize(args) {
   } finally {
     rmSync(stagingRoot, { recursive: true, force: true });
   }
+  if (!config.created) warnPinnedRepositoryDefault(config, destination);
   return {
     json: options.json,
     result: {
@@ -167,15 +230,46 @@ function initialize(args) {
       root: realpathSync(destination),
       affectedIds: [productId],
       canonicalPaths: ["product.yaml"],
-      generatedPaths: [
-        "generated/docs/model-overview.md",
-        "generated/graph/model-graph.json",
-        "generated/graph/model-graph.ndjson",
-      ],
+      generatedPaths: [...generatedPaths],
+      ...(config.created ? { configPath: config.configPath } : {}),
     },
   };
 }
 
+// A pre-existing repository config keeps selecting its own product root; a
+// second init must say so or every rootless command silently addresses the
+// other product.
+function warnPinnedRepositoryDefault(config, destination) {
+  let configuredRoot;
+  try {
+    const loaded = loadDdduckConfig(config.repositoryRoot);
+    if (!loaded) return;
+    configuredRoot = path.resolve(config.repositoryRoot, loaded.productRoot);
+  } catch {
+    return; // An unreadable config surfaces on the next root resolution.
+  }
+  if (canonicalPath(configuredRoot) === canonicalPath(destination)) return;
+  process.stderr.write(
+    `init: ${config.configPath} still selects ${configuredRoot} as the repository default root; pass --root or update the config to select ${path.resolve(destination)}.\n`,
+  );
+}
+
+function canonicalPath(candidate) {
+  try {
+    return realpathSync(candidate);
+  } catch {
+    return path.resolve(candidate);
+  }
+}
+
+/**
+ * Implement `ddduck check`: run check-model.mjs in a child process against the
+ * resolved root, then gate generated-view freshness (docs, graph JSON/NDJSON,
+ * and the SVG via a subprocess because rendering is async WASM) and refuse
+ * leftover interrupted-operation state. Busy roots exit 2 via ProductBusyError.
+ * @param {string[]} args - Arguments after the `check` command word.
+ * @returns {void}
+ */
 function executeChecker(args) {
   const { options } = parseCommandArgs(args, {
     options: {
@@ -186,6 +280,11 @@ function executeChecker(args) {
     },
   });
   const root = resolveProductRoot({ explicitRoot: options.root });
+  // Name the validated root when it was resolved implicitly, so a config-pinned
+  // root can never be validated invisibly. stderr keeps stdout script-safe.
+  if (!options.root) {
+    process.stderr.write(`check: validating ${root} (root resolved automatically; pass --root to override)\n`);
+  }
   assertProductNotBusy(root);
   const checkerArgs = [path.join(frameworkRoot, "scripts", "check-model.mjs"), "--root", root];
   if (options.base) checkerArgs.push("--base", path.resolve(options.base));
@@ -200,7 +299,8 @@ function executeChecker(args) {
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.status !== 0) {
     const diagnostic = result.stderr.trim();
-    throw new CliUsageError(`Validation failed for ${root}${diagnostic ? `:\n${diagnostic}` : ""}`);
+    if (!diagnostic) throw new CliUsageError(`Validation failed for ${root}`);
+    throw validationFailureError(root, diagnostic.split("\n"));
   }
   if (options["source-only"]) return;
   try {
@@ -222,7 +322,11 @@ function executeChecker(args) {
     throw new Error(`Failed to run the model graph SVG check for ${root}: ${svgCheck.error.message}`);
   }
   if (svgCheck.status !== 0) {
-    const diagnostic = (svgCheck.stderr || "").trim() || "generated/graph/model-graph.svg is missing or stale";
+    // The standalone gate prints its own regenerate remedy; strip it here so
+    // the remedy appears exactly once, in the Next: line below.
+    const diagnostic =
+      (svgCheck.stderr || "").trim().replace(/; run ddduck generate --root [^\n]*/g, "") ||
+      "generated/graph/model-graph.svg is missing or stale";
     throw new CliUsageError(`Validation failed for ${root}: ${diagnostic}`, {
       nextAction: `Run ddduck generate --root ${root}, then re-run ddduck check.`,
     });
@@ -238,6 +342,12 @@ function executeChecker(args) {
   }
 }
 
+/**
+ * Implement `ddduck generate`: refresh every generated view through the locked
+ * staged operation runner with an empty (no canonical replacement) plan.
+ * @param {string[]} args - Arguments after the `generate` command word.
+ * @returns {void}
+ */
 function generate(args) {
   const { options } = parseCommandArgs(args, { options: { root: { value: true }, json: { value: false } } });
   const root = resolveProductRoot({ explicitRoot: options.root });
@@ -248,6 +358,14 @@ function generate(args) {
   writeProductOperationResult(result, options.json);
 }
 
+/**
+ * Implement the guarantee lifecycle commands create, move, split, and retire:
+ * parse per-command options, require a registered decision for split/retire,
+ * and run the resulting plan through the staged operation runner.
+ * @param {"create"|"move"|"split"|"retire"} command - Lifecycle command name.
+ * @param {string[]} args - Arguments after the command word.
+ * @returns {void}
+ */
 function transitionGuarantee(command, args) {
   const optionDefinitions = {
     create: {
@@ -307,6 +425,12 @@ function requireRegisteredDecision(root, decision, command) {
   );
 }
 
+/**
+ * Print an operation result as one text line or one JSON object (--json).
+ * @param {{operation: string, root: string, affectedIds: string[], canonicalPaths: string[], generatedPaths: string[], configPath?: string}} result - Result from the operation runner or init.
+ * @param {boolean} json - Emit JSON instead of the text form.
+ * @returns {void}
+ */
 function writeProductOperationResult(result, json) {
   if (json) {
     process.stdout.write(`${JSON.stringify(result)}\n`);
@@ -314,11 +438,21 @@ function writeProductOperationResult(result, json) {
   }
   const affected = result.affectedIds.length > 0 ? ` ${result.affectedIds.join(", ")}` : "";
   const canonical = result.canonicalPaths.length > 0 ? result.canonicalPaths.join(", ") : "none";
+  const config = result.configPath ? `; config: ${result.configPath} (created)` : "";
   process.stdout.write(
-    `${result.operation}${affected} in ${result.root}; canonical: ${canonical}; generated: ${result.generatedPaths.join(", ")}\n`,
+    `${result.operation}${affected} in ${result.root}; canonical: ${canonical}; generated: ${result.generatedPaths.join(", ")}${config}\n`,
   );
 }
 
+/**
+ * Build the operation plan for one guarantee lifecycle command from a frozen
+ * product snapshot; move/split/retire require the source guarantee to be active.
+ * @param {"create"|"move"|"split"|"retire"} command - Lifecycle command name.
+ * @param {{nodes: object[], canonicalPaths: Record<string, string>}} snapshot - Frozen staged product snapshot.
+ * @param {string|undefined} id - Target guarantee ID (absent for create).
+ * @param {Record<string, string|boolean>} options - Parsed command options.
+ * @returns {{operation: string, affectedIds: string[], replacements: {path: string, value: object}[]}} Plan for the operation runner.
+ */
 function buildGuaranteePlan(command, snapshot, id, options) {
   if (command === "create") return createGuarantee(snapshot, options);
   const guarantee = requireGuarantee(snapshot, id);
@@ -395,10 +529,14 @@ function moveGuarantee(snapshot, guarantee, destinationDomain) {
   if (guarantee.ownerDomain === destinationDomain)
     throw new Error(`${guarantee.id} is already owned by ${destinationDomain}`);
   const previousOwner = guarantee.ownerDomain;
+  // ownershipHistory lists former owning Domains only (model-reference.md), so
+  // an owner that regains the guarantee leaves the history again.
   const updated = {
     ...guarantee,
     ownerDomain: destinationDomain,
-    ownershipHistory: [...new Set([...(guarantee.ownershipHistory ?? []), previousOwner])],
+    ownershipHistory: [...new Set([...(guarantee.ownershipHistory ?? []), previousOwner])].filter(
+      (domainId) => domainId !== destinationDomain,
+    ),
   };
   return {
     operation: "move guarantee",
@@ -517,10 +655,16 @@ function writeYaml(filePath, value) {
   writeFileSync(filePath, stringify(value));
 }
 
+/**
+ * Write .ddduck/config.json at the repository root selecting the new product
+ * root, unless a config already exists (then it is left untouched).
+ * @param {string} destination - Absolute path of the freshly published product root.
+ * @returns {{configPath: string, repositoryRoot: string, created: boolean}} Where the config lives and whether it was created.
+ */
 function writeConfigIfAbsent(destination) {
   const repositoryRoot = findRepositoryRoot(destination);
   const configPath = path.join(repositoryRoot, ".ddduck", "config.json");
-  if (existsSync(configPath)) return;
+  if (existsSync(configPath)) return { configPath, repositoryRoot, created: false };
   const relativeProductRoot = path.relative(repositoryRoot, destination).split(path.sep).join("/");
   // findRepositoryRoot falls back to the destination itself when no enclosing
   // .git exists, which makes the relative path empty; "." keeps productRoot
@@ -531,6 +675,7 @@ function writeConfigIfAbsent(destination) {
     configPath,
     `${JSON.stringify({ schemaVersion: "1", productRoot, ignore: [...defaultConfigIgnore] }, null, 2)}\n`,
   );
+  return { configPath, repositoryRoot, created: true };
 }
 
 function nextActionFor(args) {
