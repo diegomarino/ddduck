@@ -5,16 +5,39 @@
     {
       "id": "change-brief",
       "root": "examples/reminders/ddd",
-      "query": { "operation": "anchors", "args": ["--id", "interface:create-reminder"] },
+      "query": {
+        "operation": "anchors",
+        "args": [
+          "--id",
+          "interface:create-reminder"
+        ]
+      },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
-        "citations": [{ "id": "interface:create-reminder", "sourcePath": "model/interfaces/create-reminder.yaml" }],
+        "citations": [
+          {
+            "id": "interface:create-reminder",
+            "sourcePath": "model/interfaces/create-reminder.yaml"
+          }
+        ],
         "facts": [
-          { "pointer": "/result/decisions/0/id", "equals": "ADR-001" },
-          { "pointer": "/result/decisions/0/path", "equals": "decisions/ADR-001-reminder-contract.md" },
-          { "pointer": "/result/verificationCommands/0", "equals": "ddduck check --root <product-root>" },
-          { "pointer": "/result/verificationCommands/1", "equals": "ddduck generate --root <product-root>" }
+          {
+            "pointer": "/result/decisions/0/id",
+            "equals": "ADR-001"
+          },
+          {
+            "pointer": "/result/decisions/0/path",
+            "equals": "decisions/ADR-001-reminder-contract.md"
+          },
+          {
+            "pointer": "/result/verificationCommands/0",
+            "equals": "ddduck check --root <product-root>"
+          },
+          {
+            "pointer": "/result/verificationCommands/1",
+            "equals": "ddduck generate --root <product-root>"
+          }
         ]
       },
       "passed": true,
@@ -23,17 +46,40 @@
     {
       "id": "generated-freshness",
       "root": "examples/reminders/ddd",
-      "query": { "operation": "spec", "args": [] },
+      "query": {
+        "operation": "spec",
+        "args": []
+      },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
-        "citations": [{ "id": "model:members-reminders", "sourcePath": "product.yaml" }],
+        "citations": [
+          {
+            "id": "model:members-reminders",
+            "sourcePath": "product.yaml"
+          }
+        ],
         "facts": [
-          { "pointer": "/result/generatedViews/0/freshness", "equals": "fresh" },
-          { "pointer": "/result/generatedViews/1/freshness", "equals": "fresh" },
-          { "pointer": "/result/generatedViews/2/freshness", "equals": "fresh" },
-          { "pointer": "/result/verificationCommands/0", "equals": "ddduck check --root <product-root>" },
-          { "pointer": "/result/verificationCommands/1", "equals": "ddduck generate --root <product-root>" }
+          {
+            "pointer": "/result/generatedViews/0/freshness",
+            "equals": "fresh"
+          },
+          {
+            "pointer": "/result/generatedViews/1/freshness",
+            "equals": "fresh"
+          },
+          {
+            "pointer": "/result/generatedViews/2/freshness",
+            "equals": "fresh"
+          },
+          {
+            "pointer": "/result/verificationCommands/0",
+            "equals": "ddduck check --root <product-root>"
+          },
+          {
+            "pointer": "/result/verificationCommands/1",
+            "equals": "ddduck generate --root <product-root>"
+          }
         ]
       },
       "passed": true,
@@ -42,14 +88,29 @@
     {
       "id": "guarantee-impact",
       "root": "examples/reminders/ddd",
-      "query": { "operation": "impact", "args": ["--id", "REMINDERS-INV-01"] },
+      "query": {
+        "operation": "impact",
+        "args": [
+          "--id",
+          "REMINDERS-INV-01"
+        ]
+      },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
         "citations": [
-          { "id": "domain:reminders", "sourcePath": "model/domains/reminders.yaml" },
-          { "id": "interface:create-reminder", "sourcePath": "model/interfaces/create-reminder.yaml" },
-          { "id": "use-case:create-reminder", "sourcePath": "model/use-cases/create-reminder.yaml" }
+          {
+            "id": "domain:reminders",
+            "sourcePath": "model/domains/reminders.yaml"
+          },
+          {
+            "id": "interface:create-reminder",
+            "sourcePath": "model/interfaces/create-reminder.yaml"
+          },
+          {
+            "id": "use-case:create-reminder",
+            "sourcePath": "model/use-cases/create-reminder.yaml"
+          }
         ],
         "facts": []
       },
@@ -59,12 +120,28 @@
     {
       "id": "ownership-member",
       "root": "examples/reminders/ddd",
-      "query": { "operation": "node", "args": ["--id", "concept:member"] },
+      "query": {
+        "operation": "node",
+        "args": [
+          "--id",
+          "concept:member"
+        ]
+      },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
-        "citations": [{ "id": "concept:member", "sourcePath": "model/concepts/member.yaml" }],
-        "facts": [{ "pointer": "/result/node/ownerDomain", "equals": "domain:members" }]
+        "citations": [
+          {
+            "id": "concept:member",
+            "sourcePath": "model/concepts/member.yaml"
+          }
+        ],
+        "facts": [
+          {
+            "pointer": "/result/node/ownerDomain",
+            "equals": "domain:members"
+          }
+        ]
       },
       "passed": true,
       "diagnostics": []
@@ -74,15 +151,31 @@
       "root": "examples/reminders/ddd",
       "query": {
         "operation": "context",
-        "args": ["--id", "domain:members", "--id", "domain:reminders", "--id", "use-case:create-reminder"]
+        "args": [
+          "--id",
+          "domain:members",
+          "--id",
+          "domain:reminders",
+          "--id",
+          "use-case:create-reminder"
+        ]
       },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
         "citations": [
-          { "id": "domain:members", "sourcePath": "model/domains/members.yaml" },
-          { "id": "domain:reminders", "sourcePath": "model/domains/reminders.yaml" },
-          { "id": "use-case:create-reminder", "sourcePath": "model/use-cases/create-reminder.yaml" }
+          {
+            "id": "domain:members",
+            "sourcePath": "model/domains/members.yaml"
+          },
+          {
+            "id": "domain:reminders",
+            "sourcePath": "model/domains/reminders.yaml"
+          },
+          {
+            "id": "use-case:create-reminder",
+            "sourcePath": "model/use-cases/create-reminder.yaml"
+          }
         ],
         "facts": []
       },
@@ -92,16 +185,39 @@
     {
       "id": "required-anchors",
       "root": "examples/reminders/ddd",
-      "query": { "operation": "anchors", "args": ["--id", "interface:create-reminder"] },
+      "query": {
+        "operation": "anchors",
+        "args": [
+          "--id",
+          "interface:create-reminder"
+        ]
+      },
       "sourceDigest": "f82648d52e67e8f4fdfdad89b3e000b67be5962aa3d3da63836315579fb3c322",
       "evidence": {
         "origin": "query",
-        "citations": [{ "id": "interface:create-reminder", "sourcePath": "model/interfaces/create-reminder.yaml" }],
+        "citations": [
+          {
+            "id": "interface:create-reminder",
+            "sourcePath": "model/interfaces/create-reminder.yaml"
+          }
+        ],
         "facts": [
-          { "pointer": "/result/declaredAnchors/0/role", "equals": "decision" },
-          { "pointer": "/result/declaredAnchors/1/role", "equals": "source" },
-          { "pointer": "/result/declaredAnchors/2/role", "equals": "verification" },
-          { "pointer": "/result/missingEvidence", "equals": [] }
+          {
+            "pointer": "/result/declaredAnchors/0/role",
+            "equals": "decision"
+          },
+          {
+            "pointer": "/result/declaredAnchors/1/role",
+            "equals": "source"
+          },
+          {
+            "pointer": "/result/declaredAnchors/2/role",
+            "equals": "verification"
+          },
+          {
+            "pointer": "/result/missingEvidence",
+            "equals": []
+          }
         ]
       },
       "passed": true,

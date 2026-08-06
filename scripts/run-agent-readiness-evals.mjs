@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 
+/**
+ * CLI wrapper for the agent-readiness eval harness: reads a JSONL file of eval
+ * records (--input) that each name a product root below --repo-root, a query
+ * to run, and candidate evidence to verify, then delegates to
+ * lib/agent-readiness-evals.mjs. Emits one JSON result document on stdout,
+ * optionally mirrors it to --output (contained below the repo root, never
+ * .git), and exits 1 unless every case passed.
+ */
+
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { format } from "prettier";
 import { runAgentReadinessEvals } from "./lib/agent-readiness-evals.mjs";
 import { resolveContainedOutput } from "./lib/product-paths.mjs";
 
@@ -10,7 +18,9 @@ try {
   const options = parseArgs(process.argv.slice(2));
   const outputTarget = options.output ? resolveOutputPath(options.repoRoot, options.output) : null;
   const result = runAgentReadinessEvals(options);
-  const output = await format(JSON.stringify(result), { parser: "json", printWidth: 120 });
+  // Deterministic serialization with no runtime formatter dependency: the
+  // published package must run without devDependencies.
+  const output = `${JSON.stringify(result, null, 2)}\n`;
   process.stdout.write(output);
   if (outputTarget) writeOutput(outputTarget, output);
   process.exitCode = result.passed ? 0 : 1;
@@ -19,6 +29,12 @@ try {
   process.exitCode = 1;
 }
 
+/**
+ * Parse the --input/--repo-root/--output arguments, rejecting duplicates and
+ * missing values.
+ * @param {string[]} args - Raw CLI arguments.
+ * @returns {{inputPath: string, repoRoot: string, output: string|undefined}} Resolved option paths.
+ */
 function parseArgs(args) {
   const options = {};
   for (let index = 0; index < args.length; index += 1) {

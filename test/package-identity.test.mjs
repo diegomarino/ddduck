@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -93,4 +93,31 @@ test("npm pack ships only the public runtime surface", () => {
   } finally {
     rmSync(cache, { recursive: true, force: true });
   }
+});
+
+test("shipped scripts import only runtime dependencies or node builtins", () => {
+  const runtimeDependencies = new Set(Object.keys(packageJson.dependencies ?? {}));
+  const importPattern = /^\s*import\s[^;]*?\sfrom\s+["']([^"']+)["']/gm;
+  const offenders = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(entryPath);
+      else if (entry.name.endsWith(".mjs")) {
+        const source = readFileSync(entryPath, "utf8");
+        for (const match of source.matchAll(importPattern)) {
+          const specifier = match[1];
+          if (specifier.startsWith("node:") || specifier.startsWith(".")) continue;
+          const packageName = specifier.startsWith("@")
+            ? specifier.split("/").slice(0, 2).join("/")
+            : specifier.split("/")[0];
+          if (!runtimeDependencies.has(packageName)) {
+            offenders.push(`${path.relative(root, entryPath)} imports ${specifier}`);
+          }
+        }
+      }
+    }
+  };
+  walk(path.join(root, "scripts"));
+  assert.deepEqual(offenders, []);
 });
