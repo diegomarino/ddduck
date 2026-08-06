@@ -23,7 +23,7 @@
     "url": "https://github.com/diegomarino/ddduck/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "type": "module",
   "files": [

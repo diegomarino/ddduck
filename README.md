@@ -59,7 +59,7 @@ and fully editable (see [the CLI reference](docs/cli.md)).
 
 ## Authoring
 
-Install the CLI from npm (requires Node.js 20 or newer):
+Install the CLI from npm (requires Node.js 22 or newer):
 
 ```bash
 npm install -g ddduck

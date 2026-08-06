@@ -4,7 +4,7 @@ This executable journey creates a product with one Domain, one Concept, and one 
 
 ## Install ddduck
 
-Requires Node.js 20 or newer. Install the published CLI globally from npm:
+Requires Node.js 22 or newer. Install the published CLI globally from npm:
 
 ```sh
 npm install -g ddduck
