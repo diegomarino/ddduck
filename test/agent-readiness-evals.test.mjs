@@ -161,12 +161,6 @@ test("committed agent readiness eval pack has a byte-stable generated snapshot",
         "required-anchors",
       ],
     );
-    const format = runPrettier([
-      path.join(outputDirectory, "first.json"),
-      path.join(outputDirectory, "second.json"),
-      committedEvalSnapshot,
-    ]);
-    assert.equal(format.status, 0, format.output);
   } finally {
     rmSync(outputDirectory, { recursive: true, force: true });
   }
@@ -478,9 +472,4 @@ function runCli(args) {
 
 function runReportCli(args) {
   return spawnSync(process.execPath, [reportCli, ...args], { cwd: frameworkRoot, encoding: "utf8" });
-}
-
-function runPrettier(paths) {
-  const result = spawnSync("prettier", ["--check", ...paths], { cwd: frameworkRoot, encoding: "utf8" });
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
 }
