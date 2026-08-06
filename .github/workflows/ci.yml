@@ -10,8 +10,38 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Node ${{ matrix.node-version }}
+  quality:
+    name: Quality gate (Node 24.x)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        # No current dependency uses lifecycle scripts; keep it that way in CI.
+        run: npm ci --ignore-scripts
+
+      - name: Run static checks
+        # Node-version-independent checks (model, generated views, lint,
+        # formatting) run once here instead of once per matrix leg.
+        run: npm run check:static
+
+      - name: Run tests with coverage
+        # The single Node 24 test execution; also produces the coverage report.
+        run: npm run test:coverage
+
+      - name: Verify package contents
+        run: npm run pack:dry-run
+
+  test:
+    name: Node ${{ matrix.node-version }} tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -20,7 +50,6 @@ jobs:
         node-version:
           - 20.x
           - 22.x
-          - 24.x
 
     steps:
       - name: Check out repository
@@ -36,11 +65,5 @@ jobs:
         # No current dependency uses lifecycle scripts; keep it that way in CI.
         run: npm ci --ignore-scripts
 
-      - name: Run quality gate
-        run: npm run check
-
-      - name: Report test coverage
-        run: npm run test:coverage
-
-      - name: Verify package contents
-        run: npm run pack:dry-run
+      - name: Run tests
+        run: npm test

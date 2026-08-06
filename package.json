@@ -41,7 +41,8 @@
     "ddduck": "scripts/ddduck.mjs"
   },
   "scripts": {
-    "check": "npm run check:model && npm run check:docs && npm run check:graph && npm run check:graph:svg && npm run lint && npm run lint:md && npm run format:check && npm test",
+    "check": "npm run check:static && npm test",
+    "check:static": "npm run check:model && npm run check:docs && npm run check:graph && npm run check:graph:svg && npm run lint && npm run lint:md && npm run format:check",
     "check:docs": "node scripts/check-generated-docs.mjs",
     "check:graph": "node scripts/check-generated-graph.mjs",
     "check:graph:svg": "node scripts/check-generated-graph-svg.mjs",
