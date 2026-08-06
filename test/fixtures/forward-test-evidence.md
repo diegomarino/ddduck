@@ -6,7 +6,7 @@
 ## Tested skill bytes
 
 - Packaged source: `skills/update-ddduck-specs/SKILL.md`
-- SHA-256: `364f43553701fe24c1f8f160a0551cab66427878ab6d6d97aaa347af4f85e1cf`
+- SHA-256: `c1eb26b3b48a838e59508d943a567649dd7cb07c631cb514f04deccc23148484`
 - Codex fallback canonical path: `.agents/skills/update-ddduck-specs/SKILL.md`
 - Claude-only canonical path: `.claude/skills/update-ddduck-specs/SKILL.md`
 

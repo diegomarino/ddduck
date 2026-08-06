@@ -19,7 +19,7 @@ test("update-ddduck-specs has the canonical frontmatter", () => {
 test("update-ddduck-specs protects consumer work and defaults to planning", () => {
   for (const instruction of [
     "read all applicable repository instructions, and inspect Git status before analysis",
-    "Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository.",
+    "Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository (the ddduck CLI reference documents the full order, including the example-candidate fallback).",
     "`ddduck query spec` reports the resolved root.",
     "Ambiguous resolution is a stop condition: report the candidates and ask; never bootstrap a second product root beside an existing one.",
     "Default to plan-only. Mutate files only when the current user request explicitly authorizes application",

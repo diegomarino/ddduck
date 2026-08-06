@@ -8,7 +8,8 @@ Imported evidence is intentionally not part of the canonical project structure. 
 
 - Use sequential IDs: `ADR-001`, `ADR-002`, and so on.
 - Keep the ID stable forever, even if the file is renamed.
-- Use frontmatter for machine-readable metadata.
+- Use frontmatter for structured metadata; it is an authoring convention that ddduck tooling
+  does not yet read or validate.
 - Use the body for the human rationale.
 - Mark reversals through `supersedes` and `supersededBy`; do not delete historical decisions.
 - Link to model nodes by ID once those nodes exist.

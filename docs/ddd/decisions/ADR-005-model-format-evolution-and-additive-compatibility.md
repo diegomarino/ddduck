@@ -28,7 +28,8 @@ products may later justify first-class concepts such as actors, capabilities, gu
 interfaces, or more precise relationships.
 
 The current model format is intentionally strict. Its JSON Schemas reject unknown
-fields, `Domain.owns` currently lists concepts, and the checker and generated graph know
+fields, `Domain.owns` currently lists concepts [editorial note: the field shipped publicly
+as `concepts`], and the checker and generated graph know
 the existing node kinds. Consequently, an apparently additive change can be incompatible
 with older tooling even when it does not change the meaning of an existing node.
 
