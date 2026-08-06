@@ -30,6 +30,7 @@ import { isScalar, parseDocument, stringify } from "yaml";
 import { checkGeneratedDocs } from "../check-generated-docs.mjs";
 import { checkGeneratedGraph } from "../check-generated-graph.mjs";
 import { validateProduct } from "../check-model.mjs";
+import { shellQuote } from "./context-pack.mjs";
 import { writeModelOverview } from "../generate-docs.mjs";
 import { writeModelGraph } from "../generate-graph.mjs";
 import { detectProductLayout, loadProductSnapshot } from "./product-layout.mjs";
@@ -523,7 +524,7 @@ export function validationFailureError(root, errors) {
     ),
   ];
   if (referencingFiles.length > 0) {
-    error.nextAction = `Edit ${referencingFiles.join(", ")} to remove or replace the blocking guarantee reference, run ddduck generate --root ${root}, and retry.`;
+    error.nextAction = `Edit ${referencingFiles.join(", ")} to remove or replace the blocking guarantee reference, run ddduck generate --root ${shellQuote(root)}, and retry.`;
   } else if (errors.some((line) => line.startsWith("guarantee disappeared from the product"))) {
     error.nextAction =
       "Restore the guarantee record from the base product, or record the transition with ddduck retire or ddduck split, then re-run ddduck check.";

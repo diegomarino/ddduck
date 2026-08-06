@@ -126,7 +126,10 @@ test("query rejects unknown IDs and treats --json as an accepted no-op", () => {
   const unknown = runDdd(["query", "node", "--id", "concept:missing", "--root", provingFixture, "--json"]);
   assert.notEqual(unknown.status, 0);
   assert.match(unknown.stderr, /Unknown model node concept:missing/);
-  assert.match(unknown.stderr, /Next: Run ddduck query spec --root .* to list model nodes\./);
+  assert.match(
+    unknown.stderr,
+    /Next: List the model's node IDs in .*model-graph\.ndjson \(one node per line\), then retry\./,
+  );
   assert.doesNotMatch(unknown.stderr, /correct the input/);
 
   const withoutJson = runDdd(["query", "node", "--id", "domain:members", "--root", provingFixture]);

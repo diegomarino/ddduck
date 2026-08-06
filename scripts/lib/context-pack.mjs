@@ -25,15 +25,15 @@ export function shellQuote(value) {
 
 /**
  * Build the error for an ID that names no model node. An unknown ID is a model
- * failure, not a CLI-input failure: point the caller at the query that lists
- * the valid node IDs instead of the usage hint.
+ * failure, not a CLI-input failure: point the caller at the generated graph
+ * view, the surface that enumerates every node ID, instead of the usage hint.
  * @param {{root: string}} product - The loaded query product.
  * @param {string} id - The unresolved model node ID.
- * @returns {Error} Error with a `query spec` nextAction.
+ * @returns {Error} Error with a node-listing nextAction.
  */
 export function unknownModelNodeError(product, id) {
   const error = new Error(`Unknown model node ${id}`);
-  error.nextAction = `Run ddduck query spec --root ${shellQuote(product.root)} to list model nodes.`;
+  error.nextAction = `List the model's node IDs in ${path.join(product.root, "generated", "graph", "model-graph.ndjson")} (one node per line), then retry.`;
   return error;
 }
 
