@@ -12,7 +12,10 @@ domains:
   - domain:documentation
   - domain:visualization-export
   - domain:tooling-runtime
-useCases: []
+useCases:
+  - use-case:define-product-change
+  - use-case:review-product-change
+  - use-case:prepare-planning-context
 relationships:
   - rel:authoring-workflow-metamodel
   - rel:documentation-metamodel

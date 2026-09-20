@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:review-product-change
+model: model:ddduck
+name: Review a product change
+goal: Show a reviewer what changed between independently valid versions of a Model
+  and which before-and-after context to inspect for a semantic decision.
+preconditions:
+  requires: []
+success:
+  preserves:
+    - TRACEABILITY-INV-01
+  establishes:
+    - TRACEABILITY-AC-01

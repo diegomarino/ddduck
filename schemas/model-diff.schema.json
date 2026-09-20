@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ddduck.local/schemas/model-diff.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "before",
+    "after",
+    "scope",
+    "excludedScopes",
+    "added",
+    "removed",
+    "changed",
+    "relocated"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "kind": { "const": "ModelDiff" },
+    "before": { "$ref": "#/$defs/identity" },
+    "after": { "$ref": "#/$defs/identity" },
+    "scope": { "const": "canonical-yaml-only" },
+    "excludedScopes": { "const": ["decision-content", "evidence-content", "delivery-artifacts", "runtime"] },
+    "added": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+    "removed": { "type": "array", "items": { "$ref": "#/$defs/record" } },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "changes"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "changes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/change" } }
+        }
+      }
+    },
+    "relocated": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "beforePath", "afterPath"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "beforePath": { "type": "string" },
+          "afterPath": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "sourceDigest"],
+      "properties": {
+        "modelId": { "type": "string", "pattern": "^model:" },
+        "sourceDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "sourcePath", "node"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string" },
+        "sourcePath": { "type": "string" },
+        "node": { "type": "object" }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "beforePresent", "afterPresent"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^(?:/(?:[^~/]|~[01])*)+$" },
+        "beforePresent": { "type": "boolean" },
+        "afterPresent": { "type": "boolean" },
+        "before": {},
+        "after": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "beforePresent": { "const": true } } },
+          "then": { "required": ["before"] },
+          "else": { "not": { "required": ["before"] } }
+        },
+        {
+          "if": { "properties": { "afterPresent": { "const": true } } },
+          "then": { "required": ["after"] },
+          "else": { "not": { "required": ["after"] } }
+        },
+        {
+          "anyOf": [
+            { "properties": { "beforePresent": { "const": true } } },
+            { "properties": { "afterPresent": { "const": true } } }
+          ]
+        }
+      ]
+    }
+  }
+}

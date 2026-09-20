@@ -54,6 +54,42 @@ For a greenfield repository, use runtime-supported subagents only when no model 
 
 ## Compare and classify
 
+### Define before asserting
+
+Reuse an existing proposal or short brief: identify the problem and actor, success/refusal
+examples, evidence provenance, accepted constraints, alternatives, open conflicts, affected
+IDs, decision/rationale, and receiving plan. Omit sections that add no decision value.
+`Observed` describes inspected behavior; `Open` needs a decision; `Accepted` records intended
+behavior and may be unimplemented; `Rejected` preserves a considered alternative. These are
+prose labels, not YAML fields or Guarantee lifecycle states.
+
+Resolve meaning explicitly before canonical edits. A partial update may encode independent
+accepted obligations while leaving an authority question open in the brief. Zero model change
+is valid when existing obligations suffice or the proposal remains unresolved. Include those
+outcomes in the report; do not create a proposal file under this skill's model-only write scope.
+Create an ADR only for a durable, consequential decision worth maintaining.
+
+Model responsibilities rather than packages, decision vocabulary rather than every noun,
+and observable obligations rather than aspirations. Keep interfaces optional. For review,
+compose `ddduck query impact --id <id> --root <root>` with
+`ddduck query neighbors --id <id> --root <root>`; inspect a relationship with `query node`
+when its description or constraints matter. Impact follows reverse dependency edges;
+relationships are review candidates, not proof of causation. Inspect both snapshots for moves
+or removals, and use the consumer's own bridge for external delivery references.
+Filter incoming/outgoing edges by `edge.kind === 'relationship'` and deduplicate by `edge.id`
+so self-relationships appear once. For a changed Relationship ID, query its record and inspect
+the `from`/`to` endpoints; neighbors matches endpoint IDs, not the relationship's own ID.
+Separate reads are not an atomic snapshot; keep source stable and re-read if it changes.
+
+The planning handoff supplies intent, scope, non-goals, acceptance/refusal examples,
+dependencies, exclusions, and unresolved decisions alongside explicitly selected canonical
+context. A context pack cannot infer these. Valid anchors, declared audit verdicts, and
+readiness evidence do not execute tests or prove behavioral coverage.
+
+This guidance stays embedded because the installer copies only `SKILL.md`; an installed
+skill must not depend on an unshipped reference subtree. The optional full guide is
+[Definition workflow](https://github.com/diegomarino/ddduck/blob/main/docs/definition-workflow.md).
+
 Classify every material difference as exactly one of:
 
 - verified omission;

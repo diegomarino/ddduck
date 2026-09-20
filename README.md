@@ -4,6 +4,8 @@ ddduck defines a small, machine-readable product-spec format. The framework keep
 schemas, validators, policies, and generators separate from each consumer product.
 
 Start with [the getting-started guide](docs/getting-started.md) for a working first product.
+For an unsettled product question or a proposed change, use the optional
+[definition-to-planning workflow](docs/definition-workflow.md) and reuse your existing brief.
 Then use [the model guide](docs/model.md), [the model reference](docs/model-reference.md),
 [the CLI reference](docs/cli.md), and [the architecture guide](docs/architecture.md) as needed.
 
@@ -76,8 +78,8 @@ ddduck init ddd --id model:<product-id>
 `--root <path>` is always the explicit override; without it, ddduck resolves the enclosing
 product root, then `.ddduck/config.json`, then a unique repository candidate (see
 [the CLI reference](docs/cli.md#product-root-resolution) for the full order, including the
-example-candidate fallback), and fails with a diagnostic when the choice is ambiguous. The mutation surface is deliberately narrow — `check`,
-`generate`, and the `create`/`move`/`split`/`retire` Guarantee lifecycle commands — and every
+example-candidate fallback), and fails with a diagnostic when the choice is ambiguous. The mutation surface is deliberately narrow —
+`generate`, domain/concept/use-case creation, and the `create`/`move`/`split`/`retire` Guarantee lifecycle commands — and every
 successful source mutation regenerates the derived views. The canonical resolution rules and
 command contracts live in [the CLI reference](docs/cli.md#product-root-resolution).
 

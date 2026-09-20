@@ -44,6 +44,9 @@ import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib
 import { installSkill } from "./lib/skill-installer.mjs";
 import { runQuery } from "./query-model.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
+import { buildAuthoringPlan } from "./lib/product-authoring.mjs";
+import { parseYamlMapping } from "./lib/product-layout.mjs";
+import { compareProductRoots, renderProductDiff } from "./lib/product-diff.mjs";
 
 const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -68,7 +71,7 @@ function run(args) {
   const [command, ...commandArgs] = args;
   if (
     !command ||
-    !["init", "check", "generate", "query", "install", "create", "move", "split", "retire"].includes(command)
+    !["init", "check", "generate", "query", "diff", "install", "create", "move", "split", "retire"].includes(command)
   ) {
     throw new CliUsageError(`Unknown command ${command ?? "(missing)"}`);
   }
@@ -93,8 +96,22 @@ function run(args) {
     runQuery(commandArgs);
     return;
   }
+  if (command === "diff") {
+    const { options } = parseCommandArgs(commandArgs, {
+      options: { base: { value: true }, root: { value: true }, json: { value: false } },
+    });
+    const base = requiredOption(options, "base", "diff requires --base <previous-product-root>");
+    const root = resolveProductRoot({ explicitRoot: options.root });
+    const report = compareProductRoots(path.resolve(base), root);
+    process.stdout.write(`${options.json ? JSON.stringify(report) : renderProductDiff(report)}\n`);
+    return;
+  }
   if (command === "install") {
     install(commandArgs);
+    return;
+  }
+  if (command === "create" && ["domain", "concept", "use-case"].includes(commandArgs[0])) {
+    createNode(commandArgs);
     return;
   }
   if (["create", "move", "split", "retire"].includes(command)) {
@@ -355,6 +372,38 @@ function generate(args) {
     root,
     transform: () => ({ operation: "generate", affectedIds: [], replacements: [] }),
   });
+  writeProductOperationResult(result, options.json);
+}
+
+function createNode(args) {
+  const kind = args[0];
+  const shared = { root: { value: true }, json: { value: false } };
+  const fields =
+    kind === "use-case"
+      ? { file: { value: true } }
+      : {
+          id: { value: true },
+          name: { value: true },
+          purpose: { value: true },
+          ...(kind === "concept" ? { owner: { value: true } } : {}),
+        };
+  const { options } = parseCommandArgs(args, {
+    positionals: { min: 1, max: 1 },
+    options: { ...shared, ...fields },
+  });
+  const required = (field) => requiredOption(options, field, `create ${kind} requires --${field} <value>`);
+  const request =
+    kind === "use-case"
+      ? { kind: "UseCase", node: parseYamlMapping(path.resolve(required("file"))) }
+      : {
+          kind: kind === "domain" ? "Domain" : "Concept",
+          id: required("id"),
+          name: required("name"),
+          purpose: required("purpose"),
+          ...(kind === "concept" ? { ownerDomain: required("owner") } : {}),
+        };
+  const root = resolveProductRoot({ explicitRoot: options.root });
+  const result = runProductOperation({ root, transform: (snapshot) => buildAuthoringPlan(snapshot, request) });
   writeProductOperationResult(result, options.json);
 }
 

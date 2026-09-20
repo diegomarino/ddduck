@@ -21,7 +21,7 @@ test("canonical product check reports details with verbose output", () => {
   const result = runChecker(frameworkProductRoot, ["--verbose"]);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /nodes=40/);
+  assert.match(result.stdout, /nodes=47/);
   assert.match(result.stdout, /decisions=8/);
   assert.match(result.stdout, /policies=3/);
   assert.match(result.stdout, /ok/);

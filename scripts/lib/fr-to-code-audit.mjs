@@ -141,6 +141,12 @@ function renderReport(record, productionAnchors, testAnchors) {
     requirement: record.requirement,
     coverage: record.coverage,
     verdict: record.verdict,
+    verificationScope: {
+      verdictSource: "input-record",
+      anchorIntegrityChecked: true,
+      testsExecuted: false,
+      behaviorVerified: false,
+    },
     productionAnchors,
     testAnchors,
     reviewerDisposition: record.reviewerDisposition,

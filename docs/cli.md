@@ -59,7 +59,7 @@ standard-error note that the repository default still selects that other root.
 ## Common behavior
 
 Product writes are `init`, `generate`, `create`, `move`, `split`, and `retire`; successful
-mutations regenerate all required views. `check` and every `query` are read-only. A successful
+mutations regenerate all required views. `check`, `diff`, and every `query` are read-only. A successful
 `check` writes nothing to standard output; when `--root` was omitted, it prints one standard-error
 note naming the validated root so an implicitly resolved (for example config-pinned) root is never
 validated invisibly. Successful product mutations print one concise result line, or one JSON result
@@ -128,6 +128,65 @@ ddduck generate [--root <product-root>] [--json]
 `generated/graph/model-graph.svg`. A successful text
 result identifies the root, canonical paths (none for generate), and generated paths. It exits
 nonzero without an intended product mutation if validation or contained-output checks fail.
+
+## `diff`
+
+```text
+ddduck diff --base <previous-product-root> [--root <product-root>] [--json]
+```
+
+Compare two independently valid versions of the same Model by stable node ID. `--base` is
+required and `--root` uses normal root resolution. Generated output may be absent or stale.
+The command does not apply historical retention validation first: removing a Guarantee must
+remain visible in the comparison even when a subsequent `check --base` rejects that removal.
+
+The text report shows IDs, field changes, and path relocations. `--json` emits one
+`ModelDiff` version `"1"` document conforming to `schemas/model-diff.schema.json`:
+
+- `before` and `after` contain `modelId` and canonical `sourceDigest`.
+- `added` and `removed` contain full records with their product-relative source paths.
+- `changed` contains field changes keyed by escaped JSON Pointer paths. `beforePresent` and
+  `afterPresent` distinguish absent fields from explicit null values.
+- `relocated` records path changes without treating the same ID as a new record.
+- `scope` is `canonical-yaml-only`; `excludedScopes` names decision content, evidence content,
+  delivery artifacts, and runtime.
+
+Object-key order, comments, and YAML formatting are not record differences. Array order is
+preserved, so a reordered list is reported. Raw canonical-file changes still affect digests.
+Neither the digests nor an empty comparison establish ADR/evidence freshness or semantic
+equivalence. Source reads are not atomic snapshots; run comparisons while neither root is
+being edited. Busy and interrupted roots are refused.
+
+Exit 0 means comparison completed, including when changes exist; it is not an approval.
+Exit 2 means busy, and exit 1 covers invalid or incompatible inputs. Use existing `impact`
+and `neighbors` queries on both roots to inspect changed/removed context, then review meaning
+and run historical retention checking separately.
+
+## Creating domains, concepts, and use cases
+
+```text
+ddduck create domain --id domain:<slug> --name <text> --purpose <text> [--root <product-root>] [--json]
+ddduck create concept --id concept:<slug> --owner domain:<slug> --name <text> --purpose <text> [--root <product-root>] [--json]
+ddduck create use-case --file <yaml-file> [--root <product-root>] [--json]
+```
+
+Domain creation writes the node and adds its ID to the Model's `domains` list. Concept creation
+writes the node and adds its ID to the owning Domain's `concepts` list. These forms require
+every displayed field; they take model identity from the selected product.
+
+Use-case creation reads a complete canonical `UseCase` YAML mapping. Its `model` must match
+the selected product and all Guarantee/interface references must already resolve. It writes
+the new node and adds its ID to the Model's `useCases` list without changing the input file.
+An empty prerequisite or outcome list is allowed; the tool does not invent obligations.
+
+All three forms derive the destination filename from the validated ID. Duplicate IDs,
+occupied canonical paths, unknown fields, invalid references, or validation/generation
+failures reject the operation without intended publication. Successful operations update
+the owning collection and generate all views through the existing staged mutation runner.
+There is no overwrite mode. Existing YAML comments and unrelated parent fields are retained.
+The result has `operation`, `root`, `affectedIds` (new node and parent), `canonicalPaths`, and
+`generatedPaths`; append `--json` for one JSON document. Publication has the filesystem
+interruption limitations described in the [architecture guide](architecture.md#staged-lifecycle-mutation).
 
 ## Guarantee mutations
 

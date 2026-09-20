@@ -1,0 +1,15 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:prepare-planning-context
+model: model:ddduck
+name: Prepare planning context
+goal: Give a planner explicitly selected product obligations and their boundaries
+  while the receiving workflow supplies delivery intent and acceptance examples.
+preconditions:
+  requires: []
+success:
+  preserves:
+    - AUTHORING-INV-01
+    - AUTHORING-INV-02
+    - TRACEABILITY-INV-01
+  establishes: []

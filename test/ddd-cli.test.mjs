@@ -40,7 +40,18 @@ test("check help documents the source-only freshness escape hatch", () => {
 });
 
 test("every built-in command help documents its complete operational contract", () => {
-  for (const command of ["init", "check", "generate", "query", "install", "create", "move", "split", "retire"]) {
+  for (const command of [
+    "init",
+    "check",
+    "generate",
+    "query",
+    "diff",
+    "install",
+    "create",
+    "move",
+    "split",
+    "retire",
+  ]) {
     const result = runDdd([command, "--help"]);
 
     assert.equal(result.status, 0, `${command}: ${result.stderr}`);

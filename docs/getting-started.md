@@ -1,6 +1,8 @@
 # Getting started
 
 This executable journey creates a product with one Domain, one Concept, and one Guarantee.
+For help deciding what belongs in that model, start with the
+[definition workflow](definition-workflow.md).
 
 ## Install ddduck
 
@@ -37,9 +39,9 @@ repository root, and without one writes it inside the new product root instead (
 
 ```mermaid
 flowchart LR
-  Source[Manual canonical YAML edit] --> SourceCheck[ddduck check --source-only]
-  SourceCheck -->|valid| Generate[ddduck generate]
-  SourceCheck -->|invalid| Diagnostic[Actionable diagnostic]
+  Create[ddduck create] --> FreshCheck[ddduck check]
+  Source[Manual canonical YAML edit] --> Generate[ddduck generate]
+  Generate -->|invalid source| Diagnostic[Actionable diagnostic]
   Generate --> FreshCheck[ddduck check]
   FreshCheck --> Docs[Generated Markdown is fresh]
   FreshCheck --> Graph[Generated graph is fresh]
@@ -48,54 +50,22 @@ flowchart LR
 ```bash
 ddduck init ddd --id model:library
 
-cat > ddd/model/domains/catalog.yaml <<'YAML'
-schemaVersion: "1"
-kind: Domain
-id: domain:catalog
-model: model:library
-name: Catalog
-purpose: Organize the library catalog.
-concepts:
-  - concept:book
-interfaces: []
-guarantees: []
-YAML
-
-cat > ddd/model/concepts/book.yaml <<'YAML'
-schemaVersion: "1"
-kind: Concept
-id: concept:book
-model: model:library
-ownerDomain: domain:catalog
-name: Book
-purpose: Identify a catalogued book.
-YAML
-
-cat > ddd/product.yaml <<'YAML'
-schemaVersion: "1"
-kind: Model
-id: model:library
-name: library
-purpose: Define the library product.
-domains:
-  - domain:catalog
-useCases: []
-decisions: []
-YAML
-
-ddduck check --root ddd --source-only
-ddduck generate --root ddd
-ddduck check --root ddd
+ddduck create domain --id domain:catalog --name Catalog \
+  --purpose "Organize the library catalog." --root ddd
+ddduck create concept --id concept:book --owner domain:catalog --name Book \
+  --purpose "Identify a catalogued book." --root ddd
 ddduck create guarantee --origin catalog --classification invariant \
   --owner domain:catalog --statement "A Book has a stable catalog identity." --root ddd
+ddduck check --root ddd
 ddduck query spec --root ddd --json
 ```
 
 Default `check` requires both valid canonical source and fresh generated views. After a manual
-source edit, use `check --source-only`, run `generate`, then use default `check`. Do not edit
-`generated/` by hand.
+source edit, `ddduck generate --root ddd` validates the source and refreshes the views;
+use `ddduck check --root ddd` for final readback or CI. To diagnose source without writing
+anything, run `ddduck check --root ddd --source-only`. Do not edit `generated/` by hand.
 
-The successful `create` allocates the first catalog invariant serial, adds it to the Domain, and
-refreshes all generated views. The final query emits one JSON document suitable for a tool or
+Each successful `create` updates the owning collection and refreshes all generated views.
+Guarantee creation allocates the first catalog invariant serial. The final query emits one JSON document suitable for a tool or
 agent. See the [model reference](model-reference.md) before adding other node kinds, and use the
 [CLI reference](cli.md) for the complete command contracts.

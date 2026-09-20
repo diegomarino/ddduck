@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:recipient
+model: model:relay-learning
+ownerDomain: domain:relay
+name: Recipient
+purpose: The uniquely resolved destination included in the operator's confirmation.

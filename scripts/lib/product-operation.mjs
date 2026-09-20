@@ -26,7 +26,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isScalar, parseDocument, stringify } from "yaml";
+import { isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { checkGeneratedDocs } from "../check-generated-docs.mjs";
 import { checkGeneratedGraph } from "../check-generated-graph.mjs";
 import { validateProduct } from "../check-model.mjs";
@@ -476,6 +476,14 @@ function serializeReplacement(target, relativePath, value) {
     const existing = document.get(key, true);
     if (isScalar(existing) && (next === null || typeof next !== "object")) {
       existing.value = next;
+    } else if (
+      isSeq(existing) &&
+      Array.isArray(next) &&
+      next.length > existing.items.length &&
+      next.every((item) => item === null || typeof item !== "object") &&
+      existing.items.every((item, index) => isScalar(item) && item.value === next[index])
+    ) {
+      for (const item of next.slice(existing.items.length)) existing.add(document.createNode(item));
     } else {
       document.set(key, document.createNode(next));
     }

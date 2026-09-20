@@ -32,6 +32,8 @@
     "policies/",
     "skills/",
     "docs/architecture.md",
+    "docs/definition-workflow.md",
+    "docs/templates/change-brief.md",
     "docs/getting-started.md",
     "docs/model.md",
     "docs/model-reference.md",

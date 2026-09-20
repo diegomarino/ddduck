@@ -22,7 +22,13 @@ test("package and README expose the ddduck identity", () => {
 });
 
 test("reader guides and accepted ADRs are findable", () => {
-  for (const guide of ["getting-started", "model-reference", "architecture"]) {
+  for (const guide of [
+    "getting-started",
+    "model-reference",
+    "architecture",
+    "definition-workflow",
+    "templates/change-brief",
+  ]) {
     assert.ok(packageJson.files.includes(`docs/${guide}.md`));
     assert.ok(readFileSync(new URL(`../docs/${guide}.md`, import.meta.url), "utf8").length > 0);
   }
@@ -66,7 +72,7 @@ test("npm pack ships only the public runtime surface", () => {
     assert.equal(entries.length, 1, result.stdout);
     const paths = entries[0].files.map(({ path: filePath }) => filePath).sort();
     const allowedPath =
-      /^(README\.md|LICENSE|package\.json|docs\/(architecture|cli|getting-started|model|model-reference)\.md|scripts\/.+|schemas\/.+|policies\/.+|skills\/update-ddduck-specs\/SKILL\.md)$/;
+      /^(README\.md|LICENSE|package\.json|docs\/(architecture|cli|getting-started|model|model-reference|definition-workflow|templates\/change-brief)\.md|scripts\/.+|schemas\/.+|policies\/.+|skills\/update-ddduck-specs\/SKILL\.md)$/;
     const prohibitedPath =
       /^(draft\/|\.superpowers\/|\.worktrees\/|node_modules\/|examples\/|docs\/ddd\/|decisions\/|evals\/|generated\/|model\/|rules\/|test\/)/;
 
@@ -87,6 +93,8 @@ test("npm pack ships only the public runtime surface", () => {
     assert.ok(paths.includes("docs/getting-started.md"));
     assert.ok(paths.includes("docs/model-reference.md"));
     assert.ok(paths.includes("docs/architecture.md"));
+    assert.ok(paths.includes("docs/definition-workflow.md"));
+    assert.ok(paths.includes("docs/templates/change-brief.md"));
     assert.ok(paths.includes("skills/update-ddduck-specs/SKILL.md"));
     assert.ok(paths.includes("schemas/product/model.schema.json"));
     assert.ok(paths.includes("policies/policy-spec.schema.json"));

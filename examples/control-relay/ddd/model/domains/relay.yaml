@@ -1,0 +1,13 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:relay
+model: model:relay-learning
+name: Relay
+purpose: Bound confirmed delivery and report what is known about its result.
+concepts:
+  - concept:directive
+  - concept:recipient
+guarantees:
+  - RELAY-INV-01
+  - RELAY-INV-02
+  - RELAY-AC-01

@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:relay-directive
+model: model:relay-learning
+name: Relay a directive
+goal: Let an operator request bounded delivery and learn its known result, including refusal or uncertainty.
+preconditions:
+  requires: []
+success:
+  preserves:
+    - RELAY-INV-01
+    - RELAY-INV-02
+  establishes:
+    - RELAY-AC-01

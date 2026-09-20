@@ -7,6 +7,24 @@
   "generatedBy": "scripts/generate-graph.mjs",
   "nodes": [
     {
+      "id": "AUTHORING-INV-01",
+      "kind": "Guarantee",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Unresolved proposals remain outside canonical product facts until their meaning is explicitly accepted; observed implementation alone does not establish accepted product intent.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:authoring-workflow"
+    },
+    {
+      "id": "AUTHORING-INV-02",
+      "kind": "Guarantee",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Selected canonical context constrains a planning brief but does not supply its delivery intent, scope, alternatives, tasks, or approval.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:authoring-workflow"
+    },
+    {
       "id": "concept:canonical-model-node",
       "kind": "Concept",
       "name": "Canonical Model Node",
@@ -365,9 +383,84 @@
       "purpose": "Visualization Export reads canonical model topology and emits derived graph artifacts such as ContextFlow project JSON.",
       "model": "model:ddduck",
       "ownerDomain": "domain:visualization-export"
+    },
+    {
+      "id": "TRACEABILITY-AC-01",
+      "kind": "Guarantee",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Comparing valid roots of the same Model reports added, removed, changed, and relocated canonical records by stable ID, including ownership changes and removed Guarantees.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "TRACEABILITY-INV-01",
+      "kind": "Guarantee",
+      "name": null,
+      "ownershipKind": null,
+      "purpose": "Structural differences and graph relationships are review evidence; they do not establish semantic acceptance, causal impact, or verified runtime behavior.",
+      "model": "model:ddduck",
+      "ownerDomain": "domain:traceability"
+    },
+    {
+      "id": "use-case:define-product-change",
+      "kind": "UseCase",
+      "name": "Define a product change",
+      "ownershipKind": null,
+      "purpose": "Help an author separate observations, open questions, and accepted obligations before making the smallest coherent canonical model change.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "use-case:prepare-planning-context",
+      "kind": "UseCase",
+      "name": "Prepare planning context",
+      "ownershipKind": null,
+      "purpose": "Give a planner explicitly selected product obligations and their boundaries while the receiving workflow supplies delivery intent and acceptance examples.",
+      "model": "model:ddduck",
+      "ownerDomain": null
+    },
+    {
+      "id": "use-case:review-product-change",
+      "kind": "UseCase",
+      "name": "Review a product change",
+      "ownershipKind": null,
+      "purpose": "Show a reviewer what changed between independently valid versions of a Model and which before-and-after context to inspect for a semantic decision.",
+      "model": "model:ddduck",
+      "ownerDomain": null
     }
   ],
   "edges": [
+    {
+      "id": "edge:establishes|use-case:review-product-change|TRACEABILITY-AC-01",
+      "from": "use-case:review-product-change",
+      "to": "TRACEABILITY-AC-01",
+      "kind": "establishes",
+      "label": "establishes",
+      "source": "use-case:review-product-change",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:authoring-workflow|AUTHORING-INV-01",
+      "from": "domain:authoring-workflow",
+      "to": "AUTHORING-INV-01",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:authoring-workflow",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:authoring-workflow|AUTHORING-INV-02",
+      "from": "domain:authoring-workflow",
+      "to": "AUTHORING-INV-02",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:authoring-workflow",
+      "relationshipType": null,
+      "mode": null
+    },
     {
       "id": "edge:owns|domain:authoring-workflow|concept:decision-recording",
       "from": "domain:authoring-workflow",
@@ -629,6 +722,26 @@
       "mode": null
     },
     {
+      "id": "edge:owns|domain:traceability|TRACEABILITY-AC-01",
+      "from": "domain:traceability",
+      "to": "TRACEABILITY-AC-01",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:owns|domain:traceability|TRACEABILITY-INV-01",
+      "from": "domain:traceability",
+      "to": "TRACEABILITY-INV-01",
+      "kind": "owns",
+      "label": "owns",
+      "source": "domain:traceability",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
       "id": "edge:owns|domain:visualization-export|concept:contextflow-project-json",
       "from": "domain:visualization-export",
       "to": "concept:contextflow-project-json",
@@ -695,6 +808,56 @@
       "kind": "owns",
       "label": "owns",
       "source": "model:ddduck",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:preserves|use-case:define-product-change|AUTHORING-INV-01",
+      "from": "use-case:define-product-change",
+      "to": "AUTHORING-INV-01",
+      "kind": "preserves",
+      "label": "preserves",
+      "source": "use-case:define-product-change",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:preserves|use-case:prepare-planning-context|AUTHORING-INV-01",
+      "from": "use-case:prepare-planning-context",
+      "to": "AUTHORING-INV-01",
+      "kind": "preserves",
+      "label": "preserves",
+      "source": "use-case:prepare-planning-context",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:preserves|use-case:prepare-planning-context|AUTHORING-INV-02",
+      "from": "use-case:prepare-planning-context",
+      "to": "AUTHORING-INV-02",
+      "kind": "preserves",
+      "label": "preserves",
+      "source": "use-case:prepare-planning-context",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:preserves|use-case:prepare-planning-context|TRACEABILITY-INV-01",
+      "from": "use-case:prepare-planning-context",
+      "to": "TRACEABILITY-INV-01",
+      "kind": "preserves",
+      "label": "preserves",
+      "source": "use-case:prepare-planning-context",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
+      "id": "edge:preserves|use-case:review-product-change|TRACEABILITY-INV-01",
+      "from": "use-case:review-product-change",
+      "to": "TRACEABILITY-INV-01",
+      "kind": "preserves",
+      "label": "preserves",
+      "source": "use-case:review-product-change",
       "relationshipType": null,
       "mode": null
     },

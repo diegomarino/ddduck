@@ -137,7 +137,7 @@ function renderModelOverview(view) {
   lines.push("## Decisions", "");
   for (const decision of view.decisions) lines.push(`- \`${decision}\``);
   lines.push("");
-  return lines.join("\n");
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 function renderNodeList(lines, title, nodes) {

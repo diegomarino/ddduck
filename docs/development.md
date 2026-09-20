@@ -41,6 +41,11 @@ report with:
 node scripts/generate-agent-readiness-report.mjs --root examples/reminders/ddd
 ```
 
+Readiness establishes structural validity, available evidence roles, and valid links; it does
+not establish behavioral coverage or execute the referenced tests. Product evidence anchors
+remain contained within the product root. Missing evidence should stay visible, rather than
+being hidden by fabricated bridge documents or broader filesystem access.
+
 ## Revision-scoped FR-to-code audits
 
 An audit report is external verification evidence for one qualified delivery requirement, not a
@@ -64,8 +69,36 @@ Audit record structure is declared by
 `verifyFrToCodeAudit` remains the normative semantic validator on top of it.
 
 The report's three possible verdicts are `realized-and-tested`, `realized-untested`, and
-`unrealized`. It does not parse a delivery grammar, infer missing evidence, or read a working
-tree instead of the declared revision.
+`unrealized`. These are declared assessments from the input record, preserved alongside its
+`reviewerDisposition` (`accepted` or `rejected`). A valid record with a rejected disposition
+remains rejected. Successful verification checks record validity, source references, anchor
+line ranges and excerpt digests, and consistency between the declared verdict and the supplied
+anchor kinds. It does not determine whether those excerpts implement or test the requirement.
+
+`FrToCodeAuditReport` version `"1"` includes this additive, report-only metadata:
+
+```json
+{
+  "verificationScope": {
+    "verdictSource": "input-record",
+    "anchorIntegrityChecked": true,
+    "testsExecuted": false,
+    "behaviorVerified": false
+  }
+}
+```
+
+Consumers should accept this additional report field; existing verdict and reviewer-disposition
+semantics are unchanged. The strict audit input schema is unchanged and rejects
+`verificationScope` on an input record. Even `realized-and-tested` means only that the declared
+assessment has consistent production and test anchors, not that this audit ran or passed tests.
+Executable source and test files are read as text, never executed. Actual test results require
+separate execution evidence identifying the revision, command, outcome, and tested scope.
+
+The ordinary-member-list example above establishes anchor consistency within its stated scope;
+its report alone does not prove the running endpoint excludes archived members. The audit does
+not parse a delivery grammar, infer missing evidence, or read a working tree instead of the
+declared revision.
 
 ## Framework contracts
 

@@ -1,12 +1,12 @@
 # Update ddduck Specs Forward-Test Evidence
 
-**Date:** 2026-08-03
+**Date:** 2026-09-20
 **Verification kind:** Static/local package and adapter verification. This is not a live Codex or Claude Code host execution.
 
 ## Tested skill bytes
 
 - Packaged source: `skills/update-ddduck-specs/SKILL.md`
-- SHA-256: `c1eb26b3b48a838e59508d943a567649dd7cb07c631cb514f04deccc23148484`
+- SHA-256: `8a431b0dbb39cb83592f95e58c355dd75478be3834ac4c8465bac22bf062730b`
 - Codex fallback canonical path: `.agents/skills/update-ddduck-specs/SKILL.md`
 - Claude-only canonical path: `.claude/skills/update-ddduck-specs/SKILL.md`
 

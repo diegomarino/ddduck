@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: RELAY-AC-01
+model: model:relay-learning
+ownerDomain: domain:relay
+classification: acceptance-criterion
+statement: A completed relay interaction reports delivered only with delivery acknowledgement, refused when no attempt was permitted, or unknown when the attempted delivery has no conclusive result; it never reports enactment from delivery alone.
+status: active
