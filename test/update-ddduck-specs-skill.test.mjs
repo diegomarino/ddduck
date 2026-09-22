@@ -55,6 +55,44 @@ test("update-ddduck-specs defines root classification and independent baseline c
   }
 });
 
+test("update-ddduck-specs gives an executable probe order instead of a bare prohibition", () => {
+  for (const instruction of [
+    "Resolve the executable before the baseline. Probe in this order and take the first candidate that runs:",
+    "a repository-local install: `node_modules/.bin/ddduck`",
+    "the repository's own `package.json` `bin` target when the repository under analysis is ddduck itself, for example `node scripts/ddduck.mjs`",
+    "`ddduck` on `PATH`;",
+    "a ddduck source checkout whose path the user named or that the repository records, run through its `package.json` `bin` target, and only when its `version` matches the pinned `ddduckVersion`.",
+    "Probe named paths; never scan for the executable.",
+    "never walk a parent directory tree looking for a checkout — an unbounded search times out without finding anything.",
+    "There is no `--version` flag; a failing `ddduck --version` does not mean the executable is absent or broken. Read the version from the candidate's `package.json` instead.",
+    "Only an exhausted probe list establishes that no executable exists.",
+    "`npm install -g ddduck` for a global CLI;",
+    "`npm install --save-dev ddduck` to pin it in this repository;",
+    "`npx ddduck@<version> <command>` for a one-off run, naming the version explicitly.",
+    "Never install a package, add a dependency, or invoke `npx` on your own initiative",
+    "Presenting the options is the deliverable; the user chooses.",
+  ]) {
+    assert.ok(skill.includes(instruction), `missing executable instruction: ${instruction}`);
+  }
+});
+
+test("update-ddduck-specs separates unobserved state from observed absence", () => {
+  for (const instruction of [
+    "`undetermined`: the executable or the root could not be resolved, so the model state was never observed.",
+    "Failing to look is `undetermined`, never `absent`.",
+    "Never downgrade `undetermined` to `absent`, and never report an unobserved model state as fact.",
+    "name the `productRoot` from `.ddduck/config.json` as an unverified candidate in the report and derive no model state from it.",
+    "Item 1 reports the model state as `existing`, `absent`, `path-collision`, or `undetermined`, and names the resolved executable.",
+    "it asserts nothing about the model.",
+    "### Red flags",
+    "`PATH` is the last probe, not the only one.",
+    "Not observing a model is not observing its absence.",
+    "`absent` authorizes initialization.",
+  ]) {
+    assert.ok(skill.includes(instruction), `missing undetermined instruction: ${instruction}`);
+  }
+});
+
 test("update-ddduck-specs requires evidence discipline and exact classifications", () => {
   for (const instruction of [
     "proposed model assertion;",

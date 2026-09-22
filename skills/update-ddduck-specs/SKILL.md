@@ -10,7 +10,7 @@ Maintain or bootstrap a repository's ddduck product model from evidence visible 
 ## Inputs and boundaries
 
 - Resolve the repository root, read all applicable repository instructions, and inspect Git status before analysis.
-- Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository (the ddduck CLI reference documents the full order, including the example-candidate fallback). `ddduck query spec` reports the resolved root. Ambiguous resolution is a stop condition: report the candidates and ask; never bootstrap a second product root beside an existing one.
+- Use an explicitly requested product root; otherwise let ddduck resolve it in its own order: the enclosing product root of the current directory, else the `productRoot` in `.ddduck/config.json`, else the unique discovered product root in the repository (the ddduck CLI reference documents the full order, including the example-candidate fallback). `ddduck query spec` reports the resolved root. Ambiguous resolution is a stop condition: report the candidates and ask; never bootstrap a second product root beside an existing one. When no executable resolves, name the `productRoot` from `.ddduck/config.json` as an unverified candidate in the report and derive no model state from it.
 - Default to plan-only. Mutate files only when the current user request explicitly authorizes application, including prose that clearly authorizes the evidence-backed changes. `--root <path>` and `--apply` may be convenient shorthand, but ordinary prose must work.
 - Preserve unrelated and uncommitted work. Stop when intended target files overlap user changes inseparably.
 - Write only `<root>/product.yaml`, `<root>/model/**`, `<root>/decisions/**`, and regenerated `<root>/generated/**`.
@@ -22,7 +22,27 @@ Maintain or bootstrap a repository's ddduck product model from evidence visible 
 - Prefer the smallest coherent product-model change. Avoid ornamental DDD vocabulary and speculative structure.
 - Do not commit or push consumer changes unless the user separately requests it.
 
-Use a repository-compatible ddduck executable. Do not install dependencies or silently fall back to an unrelated global version.
+## Resolve the ddduck executable
+
+Resolve the executable before the baseline. Probe in this order and take the first candidate that runs:
+
+1. a command or path supplied in the current user request;
+2. a repository-local install: `node_modules/.bin/ddduck` at the repository root and at any workspace root enclosing the product root;
+3. the repository's own `package.json` `bin` target when the repository under analysis is ddduck itself, for example `node scripts/ddduck.mjs`;
+4. `ddduck` on `PATH`;
+5. a ddduck source checkout whose path the user named or that the repository records, run through its `package.json` `bin` target, and only when its `version` matches the pinned `ddduckVersion`.
+
+Probe named paths; never scan for the executable. Do not search above the repository root, and never walk a parent directory tree looking for a checkout — an unbounded search times out without finding anything. A candidate outside the repository must be named by the user or recorded in the repository, and corroborated by version before use.
+
+Confirm a candidate with `ddduck --help`. There is no `--version` flag; a failing `ddduck --version` does not mean the executable is absent or broken. Read the version from the candidate's `package.json` instead. When the repository pins a version (`ddduckVersion` in `.ddduck/agent-skills.lock.json`, or a `ddduck` dependency in `package.json`), prefer the repository-local install over `PATH` and disclose when only a `PATH` executable was available and its provenance could not be corroborated.
+
+Only an exhausted probe list establishes that no executable exists. When no candidate runs, stop before any analysis conclusion, report the model state as `undetermined`, list every probed location verbatim, and offer the user these unblocking options instead of choosing one:
+
+- `npm install -g ddduck` for a global CLI;
+- `npm install --save-dev ddduck` to pin it in this repository;
+- `npx ddduck@<version> <command>` for a one-off run, naming the version explicitly.
+
+Never install a package, add a dependency, or invoke `npx` on your own initiative, and never silently fall back to an unrelated global version. Presenting the options is the deliverable; the user chooses.
 
 ## Establish the baseline
 
@@ -31,8 +51,23 @@ Classify the selected root exactly once:
 - `existing`: `product.yaml` exists. Run `ddduck query spec --root <root> --json` and `ddduck check --root <root>`, recording both outcomes independently. A failing existing model is invalid, not absent, and must not be reinitialized.
 - `absent`: the root is missing or empty. Inspect the repository before proposing initialization.
 - `path-collision`: the root is non-empty but not a recognizable ddduck product. Report the collision and never initialize over it.
+- `undetermined`: the executable or the root could not be resolved, so the model state was never observed. Report it as `undetermined` and stop.
+
+`existing`, `absent`, and `path-collision` are observations; each requires an inspection that actually ran. Failing to look is `undetermined`, never `absent`. Never downgrade `undetermined` to `absent`, and never report an unobserved model state as fact.
 
 Stop before mutation when the ddduck executable is missing or incompatible, multiple product roots are plausible and none was selected, the selected root is a non-empty path collision, bootstrap identity, purpose, or initial domain seams are not grounded, evidence conflicts materially change the proposed model, target model files overlap inseparable user changes, or the analyzed working-tree state changed before application.
+
+### Red flags
+
+| Thought                                                                 | Reality                                                                                                                   |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| "`which ddduck` found nothing, so there is no executable."              | `PATH` is the last probe, not the only one. Probe the repository-local install and the `package.json` `bin` target first. |
+| "`ddduck --version` errored, so the executable is unusable."            | There is no `--version` flag. Confirm with `ddduck --help`.                                                               |
+| "No root resolved, so there is no product model."                       | Not observing a model is not observing its absence. Report `undetermined`.                                                |
+| "I will report `absent` and let the user correct me."                   | `absent` authorizes initialization. A false `absent` invites bootstrapping a second product root beside an existing one.  |
+| "The repository looks greenfield, so initialization is safe."           | Only an inspected, missing or empty root is `absent`. Appearance is not observation.                                      |
+| "I cannot run ddduck, so I will document findings as evidence instead." | Findings without a baseline are unverified. Report `undetermined` with the probes tried and the install options.          |
+| "I will search the parent directories for a ddduck checkout."           | Probe named paths only. An unbounded parent search times out and still finds nothing.                                     |
 
 ## Gather evidence
 
@@ -75,6 +110,8 @@ Before any mutation, report in this order:
 4. Proposed changes with classification, concrete evidence, and exact target files.
 5. Contradictions, uncertainties, and required decisions.
 6. Exact generation and verification commands.
+
+Item 1 reports the model state as `existing`, `absent`, `path-collision`, or `undetermined`, and names the resolved executable. An `undetermined` report replaces items 2 through 6 with the probed locations, the unverified root candidate, and the install options; it asserts nothing about the model.
 
 Without explicit application authorization, stop before all writes. Plan mode performs no writes, including initialization and generation.
 
