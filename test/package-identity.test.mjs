@@ -72,7 +72,7 @@ test("npm pack ships only the public runtime surface", () => {
     assert.equal(entries.length, 1, result.stdout);
     const paths = entries[0].files.map(({ path: filePath }) => filePath).sort();
     const allowedPath =
-      /^(README\.md|LICENSE|package\.json|docs\/(architecture|cli|getting-started|model|model-reference|definition-workflow|templates\/change-brief)\.md|scripts\/.+|schemas\/.+|policies\/.+|skills\/update-ddduck-specs\/SKILL\.md)$/;
+      /^(README\.md|LICENSE|package\.json|docs\/(architecture|cli|getting-started|model|model-reference|definition-workflow|templates\/change-brief)\.md|scripts\/.+|schemas\/.+|policies\/.+|skills\/update-ddduck-specs\/.+)$/;
     const prohibitedPath =
       /^(draft\/|\.superpowers\/|\.worktrees\/|node_modules\/|examples\/|docs\/ddd\/|decisions\/|evals\/|generated\/|model\/|rules\/|test\/)/;
 
@@ -96,6 +96,9 @@ test("npm pack ships only the public runtime surface", () => {
     assert.ok(paths.includes("docs/definition-workflow.md"));
     assert.ok(paths.includes("docs/templates/change-brief.md"));
     assert.ok(paths.includes("skills/update-ddduck-specs/SKILL.md"));
+    assert.ok(paths.includes("skills/update-ddduck-specs/references/modeling-and-evidence.md"));
+    assert.ok(paths.includes("skills/update-ddduck-specs/references/reviewing-changes.md"));
+    assert.ok(paths.includes("skills/update-ddduck-specs/references/authoring-and-verification.md"));
     assert.ok(paths.includes("schemas/product/model.schema.json"));
     assert.ok(paths.includes("policies/policy-spec.schema.json"));
   } finally {

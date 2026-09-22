@@ -2,10 +2,10 @@
  * Installer for the bundled update-ddduck-specs agent skill, behind `ddduck
  * install skill`. Selects a host topology from the repository state (codex
  * .agents/, claude-code .claude/, or shared via symlink), plans create,
- * upgrade, or no-op against the canonical SKILL.md and the
+ * upgrade, or no-op against the canonical skill bundle and the
  * .ddduck/agent-skills.lock.json lock, and applies the plan with atomic
  * writes plus rollback of everything touched on failure. Conflicting host
- * state or a locally modified canonical file refuses with a nextAction
+ * state or a locally modified managed bundle refuses with a nextAction
  * naming the exact path to resolve.
  */
 
@@ -23,7 +23,7 @@ import {
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 
-const lockSchemaVersion = 1;
+const lockSchemaVersion = 2;
 const lockRelativePath = path.join(".ddduck", "agent-skills.lock.json");
 
 const defaultOperations = {
@@ -126,7 +126,7 @@ const installTopologies = [
 /**
  * Install (or upgrade) the bundled skill into a repository: load, plan, apply.
  * @param {{repository: string, skillName: string, skillPath: string, packageVersion: string, operations?: object}} options - Repository root, skill identity, bundled asset path, and ddduck version for the lock.
- * @returns {{action: "create"|"upgrade"|"no-op", skillSha256: string, canonicalPath: string, lockPath: string}} The installation result.
+ * @returns {{action: "create"|"upgrade"|"no-op", skillSha256: string, bundleSha256: string, canonicalPath: string, lockPath: string}} The installation result.
  */
 export function installSkill(options) {
   const bundle = loadSkillBundle(options);
@@ -135,25 +135,35 @@ export function installSkill(options) {
 }
 
 /**
- * Read the bundled skill asset and compute its sha256.
+ * Read the bundled skill directory and compute per-file and bundle digests.
  * @param {{skillName: string, skillPath: string, operations?: object}} options - Skill name, SKILL.md path, and fs overrides for tests.
- * @returns {{name: string, bytes: Buffer, sha256: string}} The loaded bundle.
+ * @returns {{name: string, files: {path: string, bytes: Buffer, sha256: string}[], skillSha256: string, bundleSha256: string, sha256: string}} The loaded bundle.
  */
 export function loadSkillBundle({ skillName, skillPath, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   if (pathState(skillPath, resolvedOperations).type !== "file") {
     throw new Error(`Missing bundled skill asset: ${skillPath}`);
   }
-  const bytes = resolvedOperations.readFileSync(skillPath);
-  return { name: skillName, bytes, sha256: sha256(bytes) };
+  const files = readBundleFiles(path.dirname(skillPath), resolvedOperations);
+  const skill = files.find(({ path: relativePath }) => relativePath === skillFileName);
+  if (!skill) throw new Error(`Missing bundled skill asset: ${skillPath}`);
+  const bundleSha256 = files.length === 1 ? skill.sha256 : digestBundle(files);
+  return {
+    name: skillName,
+    files,
+    skillSha256: skill.sha256,
+    bundleSha256,
+    // Preserve the internal single-file field while older callers migrate.
+    sha256: skill.sha256,
+  };
 }
 
 /**
  * Inspect the repository's lock, canonical file, and host adapters and decide
  * the action: create, upgrade, or no-op — or throw on conflicting host state,
  * an incomplete lock, or a locally modified canonical skill.
- * @param {{repository: string, skillName: string, bundle: {sha256: string}, operations?: object}} options - Repository root, skill name, loaded bundle, and fs overrides.
- * @returns {{action: string, paths: object, topology: object, adaptersToMaterialize: object[], writeCanonical: boolean}} The install plan for applySkillInstall.
+ * @param {{repository: string, skillName: string, bundle: object, operations?: object}} options - Repository root, skill name, loaded bundle, and fs overrides.
+ * @returns {{action: string, paths: object, topology: object, adaptersToMaterialize: object[], writeBundle: boolean, staleFiles: string[]}} The install plan for applySkillInstall.
  */
 export function planSkillInstall({ repository, skillName, bundle, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
@@ -183,55 +193,68 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
       );
     }
     if (canonical.type === "absent") {
-      return createPlan({ paths, adapters, writeCanonical: true });
+      return createPlan({ paths, adapters, writeBundle: true });
     }
-    if (canonical.type !== "file" || sha256(resolvedOperations.readFileSync(paths.canonical)) !== bundle.sha256) {
+    if (
+      canonical.type !== "file" ||
+      sha256(resolvedOperations.readFileSync(paths.canonical)) !== bundle.skillSha256 ||
+      bundle.files.length !== 1
+    ) {
       throw conflictingHostState(`Conflicting canonical skill destination: ${paths.canonical}`, paths.canonical);
     }
-    return createPlan({ paths, adapters, writeCanonical: false });
+    return createPlan({ paths, adapters, writeBundle: false });
   }
 
   const lock = lockState.value;
   if (!isValidLock(lock, skillName, topology)) throw incompleteLock(paths.lock);
-  if (canonical.type === "absent") return createPlan({ paths, adapters, writeCanonical: true });
+  if (canonical.type === "absent") return createPlan({ paths, adapters, writeBundle: true });
   if (canonical.type !== "file") throw locallyModifiedCanonical(paths.canonical);
-  if (sha256(resolvedOperations.readFileSync(paths.canonical)) !== lock.skillSha256) {
-    throw locallyModifiedCanonical(paths.canonical);
-  }
+  assertInstalledBundleMatchesLock(paths, lock, resolvedOperations);
   if (adapters.some(({ state }) => state !== "valid")) throw incompleteLock(paths.lock);
 
+  const installedDigest = lock.bundleSha256 ?? lock.skillSha256;
+  const staleFiles =
+    lock.files
+      ?.map(({ path: relativePath }) => relativePath)
+      .filter((relativePath) => !bundle.files.some((file) => file.path === relativePath)) ?? [];
+
   return {
-    action: lock.skillSha256 === bundle.sha256 ? "no-op" : "upgrade",
+    action: installedDigest === bundle.bundleSha256 ? "no-op" : "upgrade",
     paths,
     topology,
     adaptersToMaterialize: [],
-    writeCanonical: lock.skillSha256 !== bundle.sha256,
+    writeBundle: installedDigest !== bundle.bundleSha256,
+    staleFiles,
   };
 }
 
 /**
- * Execute an install plan: atomically write the canonical skill, materialize
+ * Execute an install plan: atomically write each bundled file, materialize
  * host adapters, and write the lock; on failure roll back everything touched
  * and report any recovery failures in the thrown error.
- * @param {{packageVersion: string, bundle: {name: string, bytes: Buffer, sha256: string}, plan: object, operations?: object}} options - ddduck version for the lock, loaded bundle, plan from planSkillInstall, and fs overrides.
- * @returns {{action: string, skillSha256: string, canonicalPath: string, lockPath: string}} The installation result.
+ * @param {{packageVersion: string, bundle: object, plan: object, operations?: object}} options - ddduck version for the lock, loaded bundle, plan from planSkillInstall, and fs overrides.
+ * @returns {{action: string, skillSha256: string, bundleSha256: string, canonicalPath: string, lockPath: string}} The installation result.
  */
 export function applySkillInstall({ packageVersion, bundle, plan, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   if (plan.action === "no-op") return installResult("no-op", bundle, plan);
 
   const touched = [];
-  const originalCanonical =
-    plan.writeCanonical && pathState(plan.paths.canonical, resolvedOperations).type === "file"
-      ? resolvedOperations.readFileSync(plan.paths.canonical)
-      : null;
-  let canonicalWritten = false;
+  const originalBundle = plan.writeBundle ? snapshotDirectory(plan.paths.canonicalDirectory, resolvedOperations) : null;
+  let bundleWritten = false;
   const materializedAdapters = [];
 
   try {
-    if (plan.writeCanonical) {
-      atomicWrite(plan.paths.canonical, bundle.bytes, resolvedOperations, touched);
-      canonicalWritten = true;
+    if (plan.writeBundle) {
+      bundleWritten = true;
+      for (const file of bundle.files) {
+        atomicWrite(path.join(plan.paths.canonicalDirectory, file.path), file.bytes, resolvedOperations, touched);
+      }
+      for (const relativePath of plan.staleFiles ?? []) {
+        const stalePath = path.join(plan.paths.canonicalDirectory, relativePath);
+        touched.push(stalePath);
+        resolvedOperations.rmSync(stalePath, { force: true });
+      }
     }
     for (const adapter of plan.adaptersToMaterialize) {
       adapter.materialize({
@@ -252,8 +275,8 @@ export function applySkillInstall({ packageVersion, bundle, plan, operations = {
   } catch (error) {
     const recoveryFailures = restoreAfterFailure({
       plan,
-      originalCanonical,
-      canonicalWritten,
+      originalBundle,
+      bundleWritten,
       materializedAdapters,
       operations: resolvedOperations,
       touched,
@@ -267,19 +290,21 @@ export function applySkillInstall({ packageVersion, bundle, plan, operations = {
 function installResult(action, bundle, plan) {
   return {
     action,
-    skillSha256: bundle.sha256,
+    skillSha256: bundle.skillSha256,
+    bundleSha256: bundle.bundleSha256,
     canonicalPath: toPosixPath(plan.topology.canonicalRelativePath),
     lockPath: toPosixPath(lockRelativePath),
   };
 }
 
-function createPlan({ paths, adapters, writeCanonical }) {
+function createPlan({ paths, adapters, writeBundle }) {
   return {
     action: "create",
     paths,
     topology: paths.topology,
     adaptersToMaterialize: adapters.filter(({ state }) => state === "absent").map(({ adapter }) => adapter),
-    writeCanonical,
+    writeBundle,
+    staleFiles: [],
   };
 }
 
@@ -358,23 +383,39 @@ function selectTopology({ root, lockState, operations }) {
 function isValidLock(lock, skillName, topology) {
   return (
     lock &&
-    lock.schemaVersion === lockSchemaVersion &&
+    [1, lockSchemaVersion].includes(lock.schemaVersion) &&
     lock.skill === skillName &&
     typeof lock.ddduckVersion === "string" &&
     lock.ddduckVersion.length > 0 &&
     toPosixPath(lock.canonicalPath) === toPosixPath(topology.canonicalRelativePath) &&
     /^[a-f0-9]{64}$/.test(lock.skillSha256) &&
+    (lock.schemaVersion === 1 || isValidBundleLock(lock)) &&
     JSON.stringify(lock.adapters) === JSON.stringify(expectedAdapters(topology))
   );
 }
 
 function createLock({ packageVersion, bundle, topology }) {
+  if (bundle.files.length === 1) {
+    return {
+      schemaVersion: 1,
+      skill: bundle.name,
+      ddduckVersion: packageVersion,
+      canonicalPath: toPosixPath(topology.canonicalRelativePath),
+      skillSha256: bundle.skillSha256,
+      adapters: expectedAdapters(topology),
+    };
+  }
   return {
     schemaVersion: lockSchemaVersion,
     skill: bundle.name,
     ddduckVersion: packageVersion,
     canonicalPath: toPosixPath(topology.canonicalRelativePath),
-    skillSha256: bundle.sha256,
+    skillSha256: bundle.skillSha256,
+    bundleSha256: bundle.bundleSha256,
+    files: bundle.files.map(({ path: relativePath, sha256: fileSha256 }) => ({
+      path: relativePath,
+      sha256: fileSha256,
+    })),
     adapters: expectedAdapters(topology),
   };
 }
@@ -412,7 +453,7 @@ function atomicWrite(destination, content, operations, touched) {
   }
 }
 
-function restoreAfterFailure({ plan, originalCanonical, canonicalWritten, materializedAdapters, operations, touched }) {
+function restoreAfterFailure({ plan, originalBundle, bundleWritten, materializedAdapters, operations, touched }) {
   const failures = [];
   for (const adapter of materializedAdapters.toReversed()) {
     try {
@@ -425,17 +466,16 @@ function restoreAfterFailure({ plan, originalCanonical, canonicalWritten, materi
       failures.push(`remove ${adapter.host} adapter: ${error.message}`);
     }
   }
-  if (!canonicalWritten) return failures;
+  if (!bundleWritten && originalBundle === null) return failures;
 
   try {
-    if (originalCanonical) {
-      atomicWrite(plan.paths.canonical, originalCanonical, operations, touched);
-    } else {
-      touched.push(plan.paths.canonical);
-      operations.rmSync(plan.paths.canonical, { force: true });
+    touched.push(plan.paths.canonicalDirectory);
+    operations.rmSync(plan.paths.canonicalDirectory, { recursive: true, force: true });
+    for (const file of originalBundle ?? []) {
+      atomicWrite(path.join(plan.paths.canonicalDirectory, file.path), file.bytes, operations, touched);
     }
   } catch (error) {
-    failures.push(`restore canonical skill: ${error.message}`);
+    failures.push(`restore canonical skill bundle: ${error.message}`);
   }
   return failures;
 }
@@ -452,6 +492,86 @@ function locallyModifiedCanonical(canonicalPath) {
   const error = new Error(`Locally modified canonical skill: ${canonicalPath}`);
   error.nextAction = `Revert or remove ${canonicalPath}, then re-run ddduck install skill update-ddduck-specs.`;
   return error;
+}
+
+function locallyModifiedBundle(bundlePath) {
+  const error = new Error(`Locally modified canonical skill bundle: ${bundlePath}`);
+  error.nextAction = `Revert or remove ${bundlePath}, then re-run ddduck install skill update-ddduck-specs.`;
+  return error;
+}
+
+function readBundleFiles(directory, operations, relativeDirectory = "") {
+  const current = path.join(directory, relativeDirectory);
+  const files = [];
+  const entries = operations
+    .readdirSync(current, { withFileTypes: true })
+    .sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
+  for (const entry of entries) {
+    const relativePath = path.join(relativeDirectory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...readBundleFiles(directory, operations, relativePath));
+      continue;
+    }
+    if (!entry.isFile()) throw new Error(`Unsupported bundled skill entry: ${path.join(directory, relativePath)}`);
+    const bytes = operations.readFileSync(path.join(directory, relativePath));
+    files.push({ path: toPosixPath(relativePath), bytes, sha256: sha256(bytes) });
+  }
+  return files;
+}
+
+function digestBundle(files) {
+  const digest = createHash("sha256");
+  for (const file of files) {
+    digest.update(`${file.path.length}:${file.path}:${file.bytes.length}:`);
+    digest.update(file.bytes);
+  }
+  return digest.digest("hex");
+}
+
+function isValidBundleLock(lock) {
+  return (
+    /^[a-f0-9]{64}$/.test(lock.bundleSha256) &&
+    Array.isArray(lock.files) &&
+    lock.files.length > 0 &&
+    lock.files.every(
+      (file) =>
+        file &&
+        typeof file.path === "string" &&
+        file.path.length > 0 &&
+        !path.isAbsolute(file.path) &&
+        !file.path.split("/").includes("..") &&
+        /^[a-f0-9]{64}$/.test(file.sha256),
+    )
+  );
+}
+
+function assertInstalledBundleMatchesLock(paths, lock, operations) {
+  if (lock.schemaVersion === 1) {
+    if (sha256(operations.readFileSync(paths.canonical)) !== lock.skillSha256) {
+      throw locallyModifiedCanonical(paths.canonical);
+    }
+    const entries = snapshotDirectory(paths.canonicalDirectory, operations) ?? [];
+    if (entries.some(({ path: relativePath }) => relativePath !== skillFileName)) {
+      throw locallyModifiedBundle(paths.canonicalDirectory);
+    }
+    return;
+  }
+
+  const installed = snapshotDirectory(paths.canonicalDirectory, operations) ?? [];
+  const expectedPaths = lock.files.map(({ path: relativePath }) => relativePath);
+  if (
+    JSON.stringify(installed.map(({ path: relativePath }) => relativePath)) !== JSON.stringify(expectedPaths) ||
+    installed.some((file, index) => file.sha256 !== lock.files[index].sha256)
+  ) {
+    throw locallyModifiedBundle(paths.canonicalDirectory);
+  }
+}
+
+function snapshotDirectory(directory, operations) {
+  const state = pathState(directory, operations);
+  if (state.type === "absent") return null;
+  if (state.type !== "directory") throw locallyModifiedBundle(directory);
+  return readBundleFiles(directory, operations);
 }
 
 function sha256(bytes) {

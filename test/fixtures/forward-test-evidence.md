@@ -6,15 +6,16 @@
 ## Tested skill bytes
 
 - Packaged source: `skills/update-ddduck-specs/SKILL.md`
-- SHA-256: `8a431b0dbb39cb83592f95e58c355dd75478be3834ac4c8465bac22bf062730b`
+- SHA-256: `b3a5f94be48dc256ab64a11120427efa81a95221984dfac01f919eb15ba95182`
+- Bundle SHA-256: `b8acf4321df31cbea06a3d18152331dee997a2628296740b1eb46e76e96d702a`
 - Codex fallback canonical path: `.agents/skills/update-ddduck-specs/SKILL.md`
 - Claude-only canonical path: `.claude/skills/update-ddduck-specs/SKILL.md`
 
-The local installer fixture verifies two host-topology cases. A repository with no existing host directories uses the Codex fallback path and does not create `.claude/`. A repository with `.claude/` and no `.agents/` installs directly into the Claude Code path and does not create `.agents/`. Each installed `SKILL.md` must equal the packaged source bytes and the SHA-256 above. The installer lock records that same digest and the selected canonical path.
+The local installer fixture verifies two host-topology cases. A repository with no existing host directories uses the Codex fallback path and does not create `.claude/`. A repository with `.claude/` and no `.agents/` installs directly into the Claude Code path and does not create `.agents/`. Each installed skill bundle must equal the packaged source bytes. The installer lock records the entrypoint digest, bundle digest, file manifest, and selected canonical path.
 
 ## Static forward-test checklist
 
-The following cases are checked against the packaged `SKILL.md` contract. They are behavior expectations for every installed host topology because each topology installs the same packaged bytes; they do not prove either host executed the skill in this worktree.
+The following cases are checked against the packaged skill-bundle contract. They are behavior expectations for every installed host topology because each topology installs the same packaged bytes; they do not prove either host executed the skill in this worktree.
 
 | Case                          | Expected behavior                                                                                                                          | Static/local evidence                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -38,4 +39,4 @@ npm_config_cache=/private/tmp/ddduck-npm-cache npm pack --dry-run
 npm run check
 ```
 
-The fixture verifies the digest, source-to-Codex-fallback byte equality, source-to-Claude-only byte equality, and the static contract evidence described above. Live Codex and Claude Code invocation remains unverified in this worktree.
+The fixture verifies both digests, the complete source-to-Codex-fallback and source-to-Claude-only bundle equality, and the static contract evidence described above. Live Codex and Claude Code invocation remains unverified in this worktree.

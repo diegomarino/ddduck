@@ -129,7 +129,7 @@ export function renderHelp(command) {
     install: [
       "Syntax: ddduck install skill update-ddduck-specs [--repo <repository-root>]",
       "Defaults: --repo is the current directory.",
-      "Writes: the selected host skill adapter and .ddduck/agent-skills.lock.json in --repo.",
+      "Writes: the selected host skill bundle and .ddduck/agent-skills.lock.json in --repo.",
       "Success output: one text result with the action (created, upgraded, or no-op), repository, canonical path, and lock path.",
       "Exit status: 0 on installation, no-op, or help; nonzero on invalid input or conflicting host state.",
       "JSON: unavailable; --json is not accepted.",

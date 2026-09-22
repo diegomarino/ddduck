@@ -301,10 +301,12 @@ no .agents/ or .claude/   -> .agents/skills/update-ddduck-specs/SKILL.md
 ```
 
 The installer writes `.ddduck/agent-skills.lock.json` with the selected canonical path, host
-adapters, package version, and installed `SKILL.md` SHA-256. It does not create a host directory
-for a host that is absent from the repository, except for the `.agents/` fallback when no host
-directory exists. On success it prints one result line naming the action (`created`, `upgraded`,
-or `no-op`), the repository, the canonical skill path, and the lock path. It does not accept
+adapters, package version, installed file manifest, `SKILL.md` SHA-256, and whole-bundle SHA-256.
+It installs `SKILL.md` and its bundled `references/` directory, refuses locally modified managed
+files, and upgrades legacy single-file locks without overwriting extra local files. It does not
+create a host directory for a host that is absent from the repository, except for the `.agents/`
+fallback when no host directory exists. On success it prints one result line naming the action
+(`created`, `upgraded`, or `no-op`), the repository, the canonical skill path, and the lock path. It does not accept
 `--json`.
 
 Invoke the skill from the relevant host:
@@ -315,5 +317,5 @@ Claude: /update-ddduck-specs
 ```
 
 The skill defaults to plan-only; changing a product model requires explicit apply authorization.
-Its workflow behavior is defined by the installed `SKILL.md` (and its packaged
-[canonical source](../skills/update-ddduck-specs/SKILL.md)).
+Its workflow behavior is defined by the installed skill bundle (see its packaged
+[canonical entrypoint](../skills/update-ddduck-specs/SKILL.md)).

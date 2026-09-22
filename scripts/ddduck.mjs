@@ -122,7 +122,7 @@ function run(args) {
 
 /**
  * Implement `ddduck install skill update-ddduck-specs`: install the bundled
- * host skill adapter and .ddduck/agent-skills.lock.json into --repo.
+ * host skill bundle and .ddduck/agent-skills.lock.json into --repo.
  * @param {string[]} args - Arguments after the `install` command word.
  * @returns {void}
  */
