@@ -1,6 +1,7 @@
 # CLI reference
 
-`ddduck` operates on a selected product root. Run `ddduck --help`, or pass `--help` anywhere
+`ddduck` operates on a selected product root. Run `ddduck --version` for the installed version and
+`ddduck --help`, or pass `--help` anywhere
 after a command name (including `ddduck <command> <subcommand> --help`), for the built-in usage
 lines. Option values may be written as `--option value` or `--option=value`; a value that begins
 with `--` must use the `--option=value` form. Every command rejects unknown options, duplicate
@@ -13,6 +14,17 @@ retry logic never has to string-match standard error; every other failure exits 
 
 This package is published to npm as `ddduck`; install the CLI globally with `npm install -g ddduck`
 (see [the getting-started guide](getting-started.md#install-ddduck)).
+
+## `--version`
+
+```text
+ddduck --version | ddduck -v [--json]
+```
+
+`--version` (or `-v`) prints the version of the installed `ddduck` package as one text line,
+`ddduck <version>`. With `--json` it emits one JSON object, `{"name":"ddduck","version":"<version>"}`.
+It reads nothing but the package's own `package.json`, writes nothing, and exits zero;
+`ddduck --version --help` prints the flag's contract like any command help.
 
 ## Product root resolution
 

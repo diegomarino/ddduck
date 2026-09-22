@@ -3,7 +3,7 @@
 /**
  * Entry point for the `ddduck` CLI (the package bin). Dispatches the commands
  * init, check, generate, query, install, and the guarantee lifecycle commands
- * create/move/split/retire. Mutations run through the locked, staged operation
+ * create/move/split/retire, plus the top-level --help and --version flags. Mutations run through the locked, staged operation
  * runner in lib/product-operation.mjs; init publishes a fresh product root via
  * PID-stamped staging; check delegates to check-model.mjs plus the generated
  * freshness gates. Errors leave through writeCliError with a Next: action line.
@@ -65,6 +65,14 @@ try {
 function run(args) {
   if (args.length === 1 && args[0] === "--help") {
     process.stdout.write(renderHelp());
+    return;
+  }
+  // --version is a top-level flag rather than a command word, but it answers
+  // --help and --json like every command does.
+  if (["--version", "-v"].includes(args[0])) {
+    const versionArgs = args.slice(1);
+    if (versionArgs.includes("--help")) process.stdout.write(renderHelp("version"));
+    else writeVersion(versionArgs);
     return;
   }
   const [command, ...commandArgs] = args;
@@ -188,6 +196,18 @@ function partialInstallFailure(outcomes, failures, repository) {
   const nextAction = failures.find(({ error: failure }) => failure.nextAction)?.error.nextAction;
   if (nextAction) error.nextAction = nextAction;
   return error;
+}
+
+/**
+ * Implement `ddduck --version` / `ddduck -v`: print the version of the ddduck
+ * package this executable belongs to.
+ * @param {string[]} args - Arguments after the version flag.
+ * @returns {void}
+ */
+function writeVersion(args) {
+  const { options } = parseCommandArgs(args, { options: { json: { value: false } } });
+  const version = packageVersion();
+  process.stdout.write(options.json ? `${JSON.stringify({ name: "ddduck", version })}\n` : `ddduck ${version}\n`);
 }
 
 function packageVersion() {

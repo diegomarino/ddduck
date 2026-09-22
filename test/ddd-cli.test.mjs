@@ -452,6 +452,41 @@ test("install skill rejects an unknown skill name by naming the bundled skills",
   assert.match(wrongKind.stderr, /Error: install requires the entity kind skill/);
 });
 
+test("prints the package version for --version, -v, and --json", () => {
+  const version = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).version;
+
+  for (const flag of ["--version", "-v"]) {
+    const result = runDdd([flag]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `ddduck ${version}\n`);
+    assert.equal(result.stderr, "");
+  }
+
+  const json = runDdd(["--version", "--json"]);
+
+  assert.equal(json.status, 0, json.stderr);
+  assert.deepEqual(JSON.parse(json.stdout), { name: "ddduck", version });
+  assert.equal(json.stderr, "");
+});
+
+test("documents the version flag in help and rejects unknown version options", () => {
+  const overview = runDdd(["--help"]);
+
+  assert.equal(overview.status, 0, overview.stderr);
+  assert.match(overview.stdout, /--version/);
+
+  const versionHelp = runDdd(["--version", "--help"]);
+
+  assert.equal(versionHelp.status, 0, versionHelp.stderr);
+  assert.match(versionHelp.stdout, /^Syntax: ddduck --version/m);
+
+  const invalid = runDdd(["-v", "--bogus"]);
+
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /Unknown option --bogus/);
+});
+
 test("init reports canonical and generated paths in text and JSON", () => {
   const textDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-text-"));
   const textResult = runDdd(["init", textDestination, "--id", "model:text-result"]);
