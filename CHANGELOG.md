@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.1.2...ddduck-v0.2.0) (2026-09-22)
+
+
+### Features
+
+* add lightweight definition and change-review workflows ([#8](https://github.com/diegomarino/ddduck/issues/8)) ([17df7ac](https://github.com/diegomarino/ddduck/commit/17df7acc08064f2861e278cd8616d249ffceb61b))
+
 ## [0.1.2](https://github.com/diegomarino/ddduck/compare/ddduck-v0.1.1...ddduck-v0.1.2) (2026-08-06)
 
 
