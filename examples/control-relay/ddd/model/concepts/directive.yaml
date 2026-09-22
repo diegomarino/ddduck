@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:directive
+model: model:relay-learning
+ownerDomain: domain:relay
+name: Directive
+purpose: The exact content whose delivery an operator confirms.

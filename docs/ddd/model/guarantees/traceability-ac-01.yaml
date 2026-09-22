@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Guarantee
+id: TRACEABILITY-AC-01
+model: model:ddduck
+ownerDomain: domain:traceability
+classification: acceptance-criterion
+statement: Comparing valid roots of the same Model reports added, removed,
+  changed, and relocated canonical records by stable ID, including ownership
+  changes and removed Guarantees.
+status: active

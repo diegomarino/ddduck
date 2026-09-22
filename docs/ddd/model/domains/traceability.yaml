@@ -21,7 +21,9 @@ excludedConcepts:
   - concept:contextflow-project-json
   - concept:documentation-view
 interfaces: []
-guarantees: []
+guarantees:
+  - TRACEABILITY-AC-01
+  - TRACEABILITY-INV-01
 decisions:
   - ADR-001
   - ADR-002

@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: RELAY-INV-02
+model: model:relay-learning
+ownerDomain: domain:relay
+classification: invariant
+statement: Relaying a directive neither enacts it nor changes the recipient's work state.
+status: active

@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:directive-targets-recipient
+model: model:relay-learning
+from: concept:directive
+to: concept:recipient
+relationshipType: targets
+mode: confirmed-delivery
+description: A directive names the recipient whose resolved identity the operator confirms.
+ownedBy: domain:relay

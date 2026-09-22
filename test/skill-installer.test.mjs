@@ -33,14 +33,12 @@ test("defaults to a Codex canonical skill snapshot when no host directories exis
   assert.equal(result.action, "create");
   assert.equal(readFileSync(path.join(repository, canonicalRelativePath), "utf8"), readFileSync(bundledSkill, "utf8"));
   assert.equal(existsSync(path.join(repository, ".claude")), false);
-  assert.deepEqual(JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")), {
-    schemaVersion: 1,
-    skill: "update-ddduck-specs",
-    ddduckVersion: "test-version",
-    canonicalPath: ".agents/skills/update-ddduck-specs/SKILL.md",
-    skillSha256: result.skillSha256,
-    adapters: [{ host: "codex", path: ".agents/skills/update-ddduck-specs" }],
-  });
+  assertBundleLock(
+    JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")),
+    result,
+    ".agents/skills/update-ddduck-specs/SKILL.md",
+    [{ host: "codex", path: ".agents/skills/update-ddduck-specs" }],
+  );
 });
 
 test("installs directly into Claude Code when only .claude exists", () => {
@@ -56,14 +54,12 @@ test("installs directly into Claude Code when only .claude exists", () => {
   );
   assert.equal(existsSync(path.join(repository, ".agents")), false);
   assert.equal(lstatSync(path.join(repository, claudeRelativePath)).isDirectory(), true);
-  assert.deepEqual(JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")), {
-    schemaVersion: 1,
-    skill: "update-ddduck-specs",
-    ddduckVersion: "test-version",
-    canonicalPath: ".claude/skills/update-ddduck-specs/SKILL.md",
-    skillSha256: result.skillSha256,
-    adapters: [{ host: "claude-code", path: ".claude/skills/update-ddduck-specs" }],
-  });
+  assertBundleLock(
+    JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")),
+    result,
+    ".claude/skills/update-ddduck-specs/SKILL.md",
+    [{ host: "claude-code", path: ".claude/skills/update-ddduck-specs" }],
+  );
 });
 
 test("repeated installation is a quiet no-op", () => {
@@ -76,6 +72,81 @@ test("repeated installation is a quiet no-op", () => {
 
   assert.equal(result.action, "no-op");
   assert.equal(readFileSync(lockPath, "utf8"), lockBefore);
+});
+
+test("installs the complete skill bundle including references", () => {
+  const repository = makeRepository();
+  const bundled = makeBundle("skill entrypoint\n", {
+    "references/reviewing-changes.md": "review reference\n",
+    "references/authoring-and-verification.md": "authoring reference\n",
+  });
+
+  const result = install(repository, bundled);
+
+  assert.equal(result.action, "create");
+  assert.equal(
+    readFileSync(path.join(repository, codexAdapterRelativePath, "references", "reviewing-changes.md"), "utf8"),
+    "review reference\n",
+  );
+  assert.equal(
+    readFileSync(
+      path.join(repository, codexAdapterRelativePath, "references", "authoring-and-verification.md"),
+      "utf8",
+    ),
+    "authoring reference\n",
+  );
+  const lock = JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8"));
+  assert.match(lock.bundleSha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(
+    lock.files.map(({ path: filePath }) => filePath),
+    ["SKILL.md", "references/authoring-and-verification.md", "references/reviewing-changes.md"],
+  );
+});
+
+test("refuses to overwrite a locally modified managed reference", () => {
+  const repository = makeRepository();
+  const bundled = makeBundle("skill entrypoint\n", { "references/reviewing-changes.md": "original\n" });
+  install(repository, bundled);
+  const installedReference = path.join(repository, codexAdapterRelativePath, "references", "reviewing-changes.md");
+  writeFileSync(installedReference, "local modification\n");
+
+  const error = captureError(() => install(repository, bundled));
+
+  assert.match(error.message, /Locally modified canonical skill bundle/);
+  assert.equal(readFileSync(installedReference, "utf8"), "local modification\n");
+});
+
+test("upgrades a legacy single-file lock to a complete bundle manifest", () => {
+  const repository = makeRepository();
+  const legacy = makeBundle("skill entrypoint\n");
+  const bundled = makeBundle("skill entrypoint\n", { "references/reviewing-changes.md": "review reference\n" });
+  install(repository, legacy);
+
+  const result = install(repository, bundled);
+
+  assert.equal(result.action, "upgrade");
+  assert.equal(
+    readFileSync(path.join(repository, codexAdapterRelativePath, "references", "reviewing-changes.md"), "utf8"),
+    "review reference\n",
+  );
+  const lock = JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8"));
+  assert.equal(lock.schemaVersion, 2);
+  assert.equal(lock.bundleSha256, result.bundleSha256);
+});
+
+test("refuses a legacy bundle upgrade when the managed directory contains local files", () => {
+  const repository = makeRepository();
+  const legacy = makeBundle("skill entrypoint\n");
+  const bundled = makeBundle("skill entrypoint\n", { "references/reviewing-changes.md": "review reference\n" });
+  install(repository, legacy);
+  const localNotes = path.join(repository, codexAdapterRelativePath, "local-notes.md");
+  writeFileSync(localNotes, "keep me\n");
+
+  const error = captureError(() => install(repository, bundled));
+
+  assert.match(error.message, /Locally modified canonical skill bundle/);
+  assert.equal(readFileSync(localNotes, "utf8"), "keep me\n");
+  assert.equal(existsSync(path.join(repository, codexAdapterRelativePath, "references")), false);
 });
 
 test("upgrades a clean managed snapshot when the bundled skill changes", () => {
@@ -102,8 +173,11 @@ test("refuses to overwrite a locally modified managed snapshot and states the ex
 
   const error = captureError(() => install(repository));
 
-  assert.match(error.message, /Locally modified canonical skill: .*SKILL\.md/);
-  assert.match(error.nextAction, /Revert or remove .*SKILL\.md, then re-run ddduck install skill update-ddduck-specs/);
+  assert.match(error.message, /Locally modified canonical skill bundle: .*update-ddduck-specs/);
+  assert.match(
+    error.nextAction,
+    /Revert or remove .*update-ddduck-specs, then re-run ddduck install skill update-ddduck-specs/,
+  );
   assert.equal(readFileSync(canonicalPath, "utf8"), "local modification\n");
 });
 
@@ -119,6 +193,21 @@ test("repairs a valid lock whose canonical skill file is missing", () => {
   assert.equal(result.action, "create");
   assert.equal(readFileSync(path.join(repository, canonicalRelativePath), "utf8"), readFileSync(bundledSkill, "utf8"));
   assert.equal(readFileSync(lockPath, "utf8"), lockBefore);
+});
+
+test("refuses to repair a missing skill entrypoint over a modified managed reference", () => {
+  const repository = makeRepository();
+  install(repository);
+  const canonicalPath = path.join(repository, canonicalRelativePath);
+  const installedReference = path.join(repository, codexAdapterRelativePath, "references", "reviewing-changes.md");
+  rmSync(canonicalPath);
+  writeFileSync(installedReference, "local modification\n");
+
+  const error = captureError(() => install(repository));
+
+  assert.match(error.message, /Locally modified canonical skill bundle/);
+  assert.equal(existsSync(canonicalPath), false);
+  assert.equal(readFileSync(installedReference, "utf8"), "local modification\n");
 });
 
 test("treats an empty lockless managed canonical directory as absent", () => {
@@ -405,10 +494,15 @@ function makeRepository() {
   return mkdtempSync(path.join(tmpdir(), "ddduck-skill-installer-"));
 }
 
-function makeBundle(content) {
+function makeBundle(content, files = {}) {
   const directory = mkdtempSync(path.join(tmpdir(), "ddduck-skill-bundle-"));
   const skillPath = path.join(directory, "SKILL.md");
   writeFileSync(skillPath, content);
+  for (const [relativePath, bytes] of Object.entries(files)) {
+    const filePath = path.join(directory, relativePath);
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    writeFileSync(filePath, bytes);
+  }
   return skillPath;
 }
 
@@ -449,4 +543,23 @@ function captureError(action) {
     return error;
   }
   assert.fail("Expected installation to fail");
+}
+
+function assertBundleLock(lock, result, canonicalPath, adapters) {
+  assert.equal(lock.schemaVersion, 2);
+  assert.equal(lock.skill, "update-ddduck-specs");
+  assert.equal(lock.ddduckVersion, "test-version");
+  assert.equal(lock.canonicalPath, canonicalPath);
+  assert.equal(lock.skillSha256, result.skillSha256);
+  assert.equal(lock.bundleSha256, result.bundleSha256);
+  assert.deepEqual(lock.adapters, adapters);
+  assert.deepEqual(
+    lock.files.map(({ path: relativePath }) => relativePath),
+    [
+      "SKILL.md",
+      "references/authoring-and-verification.md",
+      "references/modeling-and-evidence.md",
+      "references/reviewing-changes.md",
+    ],
+  );
 }

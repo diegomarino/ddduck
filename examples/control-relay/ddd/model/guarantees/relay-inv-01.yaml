@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: RELAY-INV-01
+model: model:relay-learning
+ownerDomain: domain:relay
+classification: invariant
+statement: The relay attempts delivery at most once per confirmation, only when the operator confirmed the exact content and uniquely resolved recipient; missing confirmation or an ambiguous recipient causes refusal without sending.
+status: active

@@ -23,7 +23,8 @@ Own the workflow for creating, reviewing, revising, and retiring model nodes.
 
 #### Active guarantees
 
-- None.
+- `AUTHORING-INV-01` - Unresolved proposals remain outside canonical product facts until their meaning is explicitly accepted; observed implementation alone does not establish accepted product intent.
+- `AUTHORING-INV-02` - Selected canonical context constrains a planning brief but does not supply its delivery intent, scope, alternatives, tasks, or approval.
 
 ### Documentation (`domain:documentation`)
 
@@ -107,7 +108,8 @@ Own the rules that prove model completeness, coherence, and guarantee lifecycle 
 
 #### Active guarantees
 
-- None.
+- `TRACEABILITY-AC-01` - Comparing valid roots of the same Model reports added, removed, changed, and relocated canonical records by stable ID, including ownership changes and removed Guarantees.
+- `TRACEABILITY-INV-01` - Structural differences and graph relationships are review evidence; they do not establish semantic acceptance, causal impact, or verified runtime behavior.
 
 ### Visualization Export (`domain:visualization-export`)
 
@@ -126,6 +128,33 @@ Own generated exports that adapt canonical model data for external visualization
 - None.
 
 ## Use Cases
+
+### Define a product change (`use-case:define-product-change`)
+
+Help an author separate observations, open questions, and accepted obligations before making the smallest coherent canonical model change.
+
+- Requires: none
+- Preserves: `AUTHORING-INV-01`
+- Establishes: none
+- Interfaces: none
+
+### Prepare planning context (`use-case:prepare-planning-context`)
+
+Give a planner explicitly selected product obligations and their boundaries while the receiving workflow supplies delivery intent and acceptance examples.
+
+- Requires: none
+- Preserves: `AUTHORING-INV-01`, `AUTHORING-INV-02`, `TRACEABILITY-INV-01`
+- Establishes: none
+- Interfaces: none
+
+### Review a product change (`use-case:review-product-change`)
+
+Show a reviewer what changed between independently valid versions of a Model and which before-and-after context to inspect for a semantic decision.
+
+- Requires: none
+- Preserves: `TRACEABILITY-INV-01`
+- Establishes: `TRACEABILITY-AC-01`
+- Interfaces: none
 
 ## Interfaces
 

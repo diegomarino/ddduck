@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Guarantee
+id: AUTHORING-INV-01
+model: model:ddduck
+ownerDomain: domain:authoring-workflow
+classification: invariant
+statement: Unresolved proposals remain outside canonical product facts until
+  their meaning is explicitly accepted; observed implementation alone does not
+  establish accepted product intent.
+status: active

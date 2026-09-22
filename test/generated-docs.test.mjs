@@ -15,11 +15,18 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { checkGeneratedDocs as checkGeneratedDocsInProcess } from "../scripts/check-generated-docs.mjs";
+import { buildModelOverview } from "../scripts/generate-docs.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const frameworkProductRoot = path.join(root, "docs", "ddd");
 const generateDocs = path.join(root, "scripts", "generate-docs.mjs");
 const checkGeneratedDocs = path.join(root, "scripts", "check-generated-docs.mjs");
+
+test("a model without decisions generates exactly one terminal newline", () => {
+  const overview = buildModelOverview(path.join(root, "examples/control-relay/ddd"));
+  assert.match(overview, /## Decisions\n$/);
+  assert.equal(overview.endsWith("\n\n"), false);
+});
 
 test("generated overview includes model identity, domains, relationships, and decisions", () => {
   const fixtureRoot = copyDocumentationFixture();

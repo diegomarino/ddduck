@@ -82,7 +82,7 @@ export function renderHelp(command) {
   const usage = {
     undefined: [
       "Usage: ddduck <command> [options]",
-      "Commands: init, check, generate, query, install, create, move, split, retire.",
+      "Commands: init, check, generate, query, diff, install, create, move, split, retire.",
       "Run `ddduck <command> --help` for command usage.",
     ],
     init: [
@@ -118,19 +118,30 @@ export function renderHelp(command) {
       "JSON: output is always JSON; --json is accepted and has no effect.",
       "Options: --id <model-node-id> (repeatable for context), --root <product-root>, --history.",
     ],
+    diff: [
+      "Syntax: ddduck diff --base <previous-product-root> [--root <product-root>] [--json]",
+      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); --base is required; output is text.",
+      "Writes: nothing; source roots are validated independently and generated freshness is not required.",
+      "Success output: a stable-ID comparison of added, removed, changed, and relocated canonical records, with source digests and explicit exclusions.",
+      "Exit status: 0 on a completed comparison (including differences) or help; 2 for a busy root; 1 for invalid input, source, interrupted state, or different Model IDs.",
+      "JSON: --json emits one ModelDiff document; comparison is canonical YAML only and requires human interpretation.",
+    ],
     install: [
       "Syntax: ddduck install skill update-ddduck-specs [--repo <repository-root>]",
       "Defaults: --repo is the current directory.",
-      "Writes: the selected host skill adapter and .ddduck/agent-skills.lock.json in --repo.",
+      "Writes: the selected host skill bundle and .ddduck/agent-skills.lock.json in --repo.",
       "Success output: one text result with the action (created, upgraded, or no-op), repository, canonical path, and lock path.",
       "Exit status: 0 on installation, no-op, or help; nonzero on invalid input or conflicting host state.",
       "JSON: unavailable; --json is not accepted.",
     ],
     create: [
       "Syntax: ddduck create guarantee --origin <origin> --classification <invariant|acceptance-criterion> --owner <domain-id> --statement <text> [--root <product-root>] [--json]",
-      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); the next origin/classification serial is allocated.",
-      "Writes: the new Guarantee, its owning Domain, and all generated views through staged publication.",
-      "Success output: one text result with the allocated ID, root, canonical paths, and generated paths.",
+      "Syntax: ddduck create domain --id domain:<slug> --name <text> --purpose <text> [--root <product-root>] [--json]",
+      "Syntax: ddduck create concept --id concept:<slug> --owner domain:<slug> --name <text> --purpose <text> [--root <product-root>] [--json]",
+      "Syntax: ddduck create use-case --file <yaml-file> [--root <product-root>] [--json]",
+      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); guarantees allocate the next origin/classification serial; other kinds require an explicit ID or complete UseCase input.",
+      "Writes: the new node, its owning collection, and all generated views through staged publication; input files are read-only.",
+      "Success output: one text result with affected IDs, root, canonical paths, and generated paths.",
       "Exit status: 0 on publication or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 with no intended product changes on any other failure.",
       "JSON: --json emits the same result as one JSON object.",
     ],

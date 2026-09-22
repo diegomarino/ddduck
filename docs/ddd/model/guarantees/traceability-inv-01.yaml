@@ -1,0 +1,10 @@
+schemaVersion: "1"
+kind: Guarantee
+id: TRACEABILITY-INV-01
+model: model:ddduck
+ownerDomain: domain:traceability
+classification: invariant
+statement: Structural differences and graph relationships are review evidence;
+  they do not establish semantic acceptance, causal impact, or verified runtime
+  behavior.
+status: active

@@ -12,7 +12,9 @@ excludedConcepts:
   - concept:coverage-gate
   - concept:documentation-view
 interfaces: []
-guarantees: []
+guarantees:
+  - AUTHORING-INV-01
+  - AUTHORING-INV-02
 decisions:
   - ADR-001
   - ADR-004

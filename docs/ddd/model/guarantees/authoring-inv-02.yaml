@@ -1,0 +1,9 @@
+schemaVersion: "1"
+kind: Guarantee
+id: AUTHORING-INV-02
+model: model:ddduck
+ownerDomain: domain:authoring-workflow
+classification: invariant
+statement: Selected canonical context constrains a planning brief but does not
+  supply its delivery intent, scope, alternatives, tasks, or approval.
+status: active

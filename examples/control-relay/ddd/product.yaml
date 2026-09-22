@@ -1,0 +1,11 @@
+schemaVersion: "1"
+kind: Model
+id: model:relay-learning
+name: Relay learning example
+purpose: Define a confirmed directive relay without claiming enactment.
+domains:
+  - domain:relay
+useCases:
+  - use-case:relay-directive
+relationships:
+  - rel:directive-targets-recipient

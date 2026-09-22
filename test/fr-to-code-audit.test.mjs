@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -16,6 +16,12 @@ const auditSchema = JSON.parse(
   readFileSync(path.join(frameworkRoot, "schemas", "fr-to-code-audit.schema.json"), "utf8"),
 );
 const validateAuditStructure = new Ajv2020({ allErrors: true, strict: true }).compile(auditSchema);
+const expectedVerificationScope = {
+  verdictSource: "input-record",
+  anchorIntegrityChecked: true,
+  testsExecuted: false,
+  behaviorVerified: false,
+};
 
 test("audit CLI help is a successful one-stream response", () => {
   const result = runAudit(["--help"]);
@@ -52,6 +58,7 @@ test("renders a qualified realized-and-tested audit with deterministic SHA-256 e
   const report = verifyFrToCodeAudit(validRecord(), fixtureReader);
 
   assert.equal(report.kind, "FrToCodeAuditReport");
+  assert.deepEqual(report.verificationScope, expectedVerificationScope);
   assert.deepEqual(
     report.sources.map((source) => source.id),
     ["source:code", "source:spec"],
@@ -74,6 +81,60 @@ test("renders a qualified realized-and-tested audit with deterministic SHA-256 e
   assert.equal(report.testAnchors[0].excerptDigest.algorithm, "sha256");
   assert.deepEqual(report.diagnostics, []);
 });
+
+for (const verdict of ["realized-and-tested", "realized-untested", "unrealized"]) {
+  for (const reviewerDisposition of ["accepted", "rejected"]) {
+    test(`preserves declared ${verdict}/${reviewerDisposition} with deterministic report-only scope`, () => {
+      const record = validRecord();
+      record.verdict = verdict;
+      record.reviewerDisposition = reviewerDisposition;
+      if (verdict !== "realized-and-tested") record.testAnchors = [];
+      if (verdict === "unrealized") record.productionAnchors = [];
+      const original = globalThis.structuredClone(record);
+
+      const report = verifyFrToCodeAudit(record, fixtureReader);
+
+      assert.deepEqual(report.verificationScope, expectedVerificationScope);
+      const { verificationScope, ...legacyReport } = report;
+      const renderExpectedAnchors = (anchors) =>
+        anchors.map((anchor) => ({
+          ...anchor,
+          excerptDigest: {
+            algorithm: "sha256",
+            value: sha256(
+              fixtureFiles
+                .get(`${anchor.sourceId}:${anchor.path}`)
+                .split("\n")
+                .slice(anchor.startLine - 1, anchor.endLine)
+                .join("\n"),
+            ),
+          },
+        }));
+      assert.deepEqual(legacyReport, {
+        schemaVersion: "1",
+        kind: "FrToCodeAuditReport",
+        audit: { id: record.id },
+        sources: [...record.sources].reverse(),
+        requirement: record.requirement,
+        coverage: record.coverage,
+        verdict,
+        productionAnchors: renderExpectedAnchors(record.productionAnchors),
+        testAnchors: renderExpectedAnchors(record.testAnchors),
+        reviewerDisposition,
+        diagnostics: [],
+      });
+      const reordered = globalThis.structuredClone(record);
+      reordered.sources.reverse();
+      assert.equal(JSON.stringify(verifyFrToCodeAudit(reordered, fixtureReader)), JSON.stringify(report));
+      assert.deepEqual(record, original);
+      assert.equal(validateAuditStructure({ ...record, verificationScope }), false);
+      assert.throws(
+        () => verifyFrToCodeAudit({ ...record, verificationScope }, fixtureReader),
+        /must match the audit schema/,
+      );
+    });
+  }
+}
 
 test("rejects evidence whose source ID is not declared", () => {
   const record = validRecord();
@@ -280,6 +341,43 @@ test("runs the published FR-005 ordinary-member-list proof shape against a tempo
   assert.equal(report.verdict, "realized-and-tested");
   assert.deepEqual(report.requirement, fixtureRecord.requirement);
   assert.deepEqual(report.coverage, expectedCoverage);
+  assert.deepEqual(report.verificationScope, expectedVerificationScope);
+});
+
+test("CLI digests executable production and test anchors without running them", () => {
+  const fixture = gitAuditFixture();
+  const marker = path.join(fixture.code.root, "anchor-executed");
+  const executable = [
+    "#!/usr/bin/env node",
+    `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');`,
+    "throw new Error('anchored code must never execute');",
+    "",
+  ].join("\n");
+  for (const relativePath of ["production.cjs", "test.cjs"]) {
+    const filePath = path.join(fixture.code.root, relativePath);
+    writeFileSync(filePath, executable);
+    chmodSync(filePath, 0o755);
+  }
+  runGit(fixture.code.root, ["add", "production.cjs", "test.cjs"]);
+  runGit(fixture.code.root, ["commit", "-qm", "executable audit anchors"]);
+  fixture.record.sources.find((source) => source.id === "source:code").revision = runGit(fixture.code.root, [
+    "rev-parse",
+    "HEAD",
+  ]).stdout.trim();
+  fixture.record.productionAnchors = [{ sourceId: "source:code", path: "production.cjs", startLine: 1, endLine: 3 }];
+  fixture.record.testAnchors = [{ sourceId: "source:code", path: "test.cjs", startLine: 1, endLine: 3 }];
+
+  const result = runAudit(auditArguments(writeAuditRecord(fixture.record), fixture));
+
+  assert.equal(existsSync(marker), false, "neither anchored executable may run");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.verdict, "realized-and-tested");
+  assert.deepEqual(report.verificationScope, expectedVerificationScope);
+  for (const anchor of [...report.productionAnchors, ...report.testAnchors]) {
+    assert.deepEqual(anchor.excerptDigest, { algorithm: "sha256", value: sha256(executable.trimEnd()) });
+  }
 });
 
 test("requires --json and rejects unknown CLI arguments", () => {

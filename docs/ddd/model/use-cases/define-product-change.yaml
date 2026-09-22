@@ -1,0 +1,13 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:define-product-change
+model: model:ddduck
+name: Define a product change
+goal: Help an author separate observations, open questions, and accepted obligations
+  before making the smallest coherent canonical model change.
+preconditions:
+  requires: []
+success:
+  preserves:
+    - AUTHORING-INV-01
+  establishes: []
