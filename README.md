@@ -92,7 +92,8 @@ Install the evidence-backed model maintenance skill in a consumer repository:
 ddduck install skill update-ddduck-specs --repo <repository-root>
 ```
 
-`--repo` defaults to the current directory. See [the CLI reference](docs/cli.md#install-an-agent-skill)
+`--repo` defaults to the current directory, and omitting the skill name installs every skill
+bundled in the package. See [the CLI reference](docs/cli.md#install-an-agent-skill)
 for the installed layout, host invocation, and plan-only behavior.
 
 ## Product queries

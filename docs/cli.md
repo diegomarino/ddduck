@@ -227,10 +227,13 @@ The command does not recursively expand the perimeter.
 ## Install an agent skill
 
 ```text
-ddduck install skill update-ddduck-specs [--repo <repository-root>]
+ddduck install skill [<skill-name>] [--repo <repository-root>] [--json]
 ```
 
-`--repo` defaults to the current directory. The installer chooses the least intrusive host
+`--repo` defaults to the current directory. Omitting `<skill-name>` installs every skill bundled
+in the package — each directory under the package's `skills/` that holds a `SKILL.md` — in name
+order; naming a skill installs only that one. An unknown name is a usage error that lists the
+bundled skill names. The installer chooses the least intrusive host
 topology from the repository's existing directories:
 
 ```text
@@ -241,12 +244,26 @@ no .agents/ or .claude/   -> .agents/skills/update-ddduck-specs/SKILL.md
                              .claude/skills/update-ddduck-specs -> ../../.agents/skills/update-ddduck-specs
 ```
 
-The installer writes `.ddduck/agent-skills.lock.json` with the selected canonical path, host
-adapters, package version, and installed `SKILL.md` SHA-256. It does not create a host directory
-for a host that is absent from the repository, except for the `.agents/` fallback when no host
-directory exists. On success it prints one result line naming the action (`created`, `upgraded`,
-or `no-op`), the repository, the canonical skill path, and the lock path. It does not accept
-`--json`.
+The installer writes one `.ddduck/agent-skills.lock.json` for the repository, holding one entry
+per installed skill — its name, the selected canonical path, host adapters, package version, and
+installed `SKILL.md` SHA-256 — sorted by skill name. The file is `"schemaVersion": 2`; a
+`"schemaVersion": 1` lock written by an earlier ddduck recorded exactly one skill at the top
+level and is still read, then migrated to the current shape the next time a skill is created or
+upgraded. Each skill is planned and applied independently, so a topology is chosen per skill and
+an entry for one skill is never rewritten by another skill's installation. The installer does not
+create a host directory for a host that is absent from the repository, except for the `.agents/`
+fallback when no host directory exists.
+
+On success it prints one result line per selected skill naming the action (`created`, `upgraded`,
+or `no-op`), the repository, the canonical skill path, and the lock path. With `--json` it emits
+one JSON object containing `operation`, `repository`, and `skills` — one result object per
+selected skill with its `skill`, `action` (`create`, `upgrade`, or `no-op`), `canonicalPath`,
+`lockPath`, and `skillSha256`.
+
+A skill that cannot be installed — conflicting host state, an inconsistent lock — does not block
+the others: every selected skill is attempted, the command exits 1, and the diagnostic names each
+failed skill with its reason plus each skill that did install, because those installations are
+already durable. Nothing is written to standard output in that case.
 
 Invoke the skill from the relevant host:
 

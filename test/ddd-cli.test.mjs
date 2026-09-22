@@ -376,6 +376,82 @@ test("install skill rejects unsupported mutation and host options", () => {
   assert.equal(existsSync(path.join(destination, ".agents", "skills", "update-ddduck-specs", "SKILL.md")), false);
 });
 
+test("install skill without a skill name installs every bundled skill", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-all-"));
+  const bundled = readdirSync(path.join(root, "skills")).filter((name) =>
+    existsSync(path.join(root, "skills", name, "SKILL.md")),
+  );
+  assert.ok(bundled.length > 0, "the package must bundle at least one skill");
+
+  const result = runDdd(["install", "skill", "--repo", destination]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(
+    result.stdout.trimEnd().split("\n"),
+    bundled
+      .toSorted()
+      .map(
+        (name) =>
+          `install skill ${name} (created) in ${path.resolve(destination)}; canonical: .agents/skills/${name}/SKILL.md; lock: .ddduck/agent-skills.lock.json`,
+      ),
+  );
+  for (const name of bundled) {
+    assert.ok(existsSync(path.join(destination, ".agents", "skills", name, "SKILL.md")));
+  }
+  const lock = JSON.parse(readFileSync(path.join(destination, ".ddduck", "agent-skills.lock.json"), "utf8"));
+  assert.deepEqual(
+    lock.skills.map(({ skill }) => skill),
+    bundled.toSorted(),
+  );
+});
+
+test("install skill --json reports one result object per skill", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-json-"));
+  const bundled = readdirSync(path.join(root, "skills"))
+    .filter((name) => existsSync(path.join(root, "skills", name, "SKILL.md")))
+    .toSorted();
+
+  const created = runDdd(["install", "skill", "--repo", destination, "--json"]);
+
+  assert.equal(created.status, 0, created.stderr);
+  const document = JSON.parse(created.stdout);
+  assert.equal(document.operation, "install skill");
+  assert.equal(document.repository, path.resolve(destination));
+  assert.deepEqual(
+    document.skills.map(({ skill, action, canonicalPath, lockPath }) => ({ skill, action, canonicalPath, lockPath })),
+    bundled.map((name) => ({
+      skill: name,
+      action: "create",
+      canonicalPath: `.agents/skills/${name}/SKILL.md`,
+      lockPath: ".ddduck/agent-skills.lock.json",
+    })),
+  );
+
+  const repeated = JSON.parse(runDdd(["install", "skill", "--repo", destination, "--json"]).stdout);
+
+  assert.deepEqual(
+    repeated.skills.map(({ action }) => action),
+    bundled.map(() => "no-op"),
+  );
+});
+
+test("install skill rejects an unknown skill name by naming the bundled skills", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-unknown-skill-"));
+
+  const result = runDdd(["install", "skill", "no-such-skill", "--repo", destination]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Error: Unknown skill no-such-skill; available skills: update-ddduck-specs/);
+  assert.match(result.stderr, /Next: Run ddduck install --help/);
+  assert.equal(existsSync(path.join(destination, ".agents")), false);
+  assert.equal(existsSync(path.join(destination, ".ddduck")), false);
+
+  const wrongKind = runDdd(["install", "agent", "--repo", destination]);
+
+  assert.notEqual(wrongKind.status, 0);
+  assert.match(wrongKind.stderr, /Error: install requires the entity kind skill/);
+});
+
 test("init reports canonical and generated paths in text and JSON", () => {
   const textDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-text-"));
   const textResult = runDdd(["init", textDestination, "--id", "model:text-result"]);

@@ -41,11 +41,13 @@ import {
 import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveInitDestination, resolveProductRoot } from "./lib/product-root-resolver.mjs";
 import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
-import { installSkill } from "./lib/skill-installer.mjs";
+import { installBundledSkills, listBundledSkills } from "./lib/skill-installer.mjs";
 import { runQuery } from "./query-model.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
 
 const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const installActionLabels = { create: "created", upgrade: "upgraded", "no-op": "no-op" };
 
 const cliArgs = process.argv.slice(2);
 
@@ -104,21 +106,29 @@ function run(args) {
 }
 
 /**
- * Implement `ddduck install skill update-ddduck-specs`: install the bundled
- * host skill adapter and .ddduck/agent-skills.lock.json into --repo.
+ * Implement `ddduck install skill [<skill-name>]`: install the bundled host
+ * skill adapters and .ddduck/agent-skills.lock.json into --repo. Without a
+ * skill name every skill bundled in the package is installed.
  * @param {string[]} args - Arguments after the `install` command word.
  * @returns {void}
  */
 function install(args) {
   const { positionals, options } = parseCommandArgs(args, {
-    positionals: { min: 2, max: 2 },
-    options: { repo: { value: true } },
+    positionals: { min: 1, max: 2, syntax: "ddduck install skill [<skill-name>] [--repo <repository-root>] [--json]" },
+    options: { repo: { value: true }, json: { value: false } },
   });
-  const [kind, skillName] = positionals;
-  if (kind !== "skill" || skillName !== "update-ddduck-specs") {
-    throw new CliUsageError("install requires skill update-ddduck-specs");
+  const [kind, requestedSkill] = positionals;
+  if (kind !== "skill") throw new CliUsageError("install requires the entity kind skill");
+  const skillsRoot = path.join(frameworkRoot, "skills");
+  const availableSkills = listBundledSkills(skillsRoot);
+  if (availableSkills.length === 0) {
+    throw new CliUsageError(`No bundled skill found under ${skillsRoot}`, {
+      nextAction: "Reinstall the ddduck package, then retry.",
+    });
   }
-  const packageVersion = JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).version;
+  if (requestedSkill !== undefined && !availableSkills.includes(requestedSkill)) {
+    throw new CliUsageError(`Unknown skill ${requestedSkill}; available skills: ${availableSkills.join(", ")}`);
+  }
   const repository = path.resolve(options.repo ?? process.cwd());
   // A typo'd --repo must fail instead of silently manufacturing a directory
   // tree (and a lock) at the wrong path while the real repository gets nothing.
@@ -127,16 +137,61 @@ function install(args) {
       nextAction: "Pass --repo <existing-repository-root> and retry.",
     });
   }
-  const result = installSkill({
+  const outcomes = installBundledSkills({
     repository,
-    skillName,
-    skillPath: path.join(frameworkRoot, "skills", skillName, "SKILL.md"),
-    packageVersion,
+    skillsRoot,
+    skillNames: requestedSkill === undefined ? availableSkills : [requestedSkill],
+    packageVersion: packageVersion(),
   });
-  const actionLabels = { create: "created", upgrade: "upgraded", "no-op": "no-op" };
-  process.stdout.write(
-    `install skill ${skillName} (${actionLabels[result.action]}) in ${repository}; canonical: ${result.canonicalPath}; lock: ${result.lockPath}\n`,
-  );
+  const failures = outcomes.filter(({ error }) => error);
+  // One skill's conflicting host state must not deny the others their
+  // installation, so every selected skill is attempted and the result reports
+  // the complete picture; any failure still exits nonzero.
+  if (failures.length > 0) throw partialInstallFailure(outcomes, failures, repository);
+  writeInstallResult(outcomes, repository, options.json);
+}
+
+function writeInstallResult(outcomes, repository, json) {
+  if (json) {
+    process.stdout.write(
+      `${JSON.stringify({
+        operation: "install skill",
+        repository,
+        skills: outcomes.map(({ skill, action, canonicalPath, lockPath, skillSha256 }) => ({
+          skill,
+          action,
+          canonicalPath,
+          lockPath,
+          skillSha256,
+        })),
+      })}\n`,
+    );
+    return;
+  }
+  for (const { skill, action, canonicalPath, lockPath } of outcomes) {
+    process.stdout.write(
+      `install skill ${skill} (${installActionLabels[action]}) in ${repository}; canonical: ${canonicalPath}; lock: ${lockPath}\n`,
+    );
+  }
+}
+
+// Report every failed skill and every skill that did install: the successful
+// installations are already durable, so the diagnostic has to name them.
+function partialInstallFailure(outcomes, failures, repository) {
+  const lines = [
+    `install skill failed in ${repository}: ${failures.length} of ${outcomes.length} selected skills could not be installed`,
+    ...outcomes.map(({ skill, action, error }) =>
+      error ? `failed ${skill}: ${error.message}` : `installed ${skill} (${installActionLabels[action]})`,
+    ),
+  ];
+  const error = new Error(lines.join("\n"));
+  const nextAction = failures.find(({ error: failure }) => failure.nextAction)?.error.nextAction;
+  if (nextAction) error.nextAction = nextAction;
+  return error;
+}
+
+function packageVersion() {
+  return JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).version;
 }
 
 /**

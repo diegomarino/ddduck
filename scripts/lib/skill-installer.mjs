@@ -1,12 +1,12 @@
 /**
- * Installer for the bundled update-ddduck-specs agent skill, behind `ddduck
- * install skill`. Selects a host topology from the repository state (codex
- * .agents/, claude-code .claude/, or shared via symlink), plans create,
- * upgrade, or no-op against the canonical SKILL.md and the
- * .ddduck/agent-skills.lock.json lock, and applies the plan with atomic
- * writes plus rollback of everything touched on failure. Conflicting host
- * state or a locally modified canonical file refuses with a nextAction
- * naming the exact path to resolve.
+ * Installer for the agent skills bundled in the package, behind `ddduck
+ * install skill`. Discovers the bundled skills, selects a host topology per
+ * skill from the repository state (codex .agents/, claude-code .claude/, or
+ * shared via symlink), plans create, upgrade, or no-op against the canonical
+ * SKILL.md and the shared .ddduck/agent-skills.lock.json lock (one entry per
+ * installed skill), and applies each plan with atomic writes plus rollback of
+ * everything touched on failure. Conflicting host state or a locally modified
+ * canonical file refuses with a nextAction naming the exact path to resolve.
  */
 
 import {
@@ -23,7 +23,10 @@ import {
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 
-const lockSchemaVersion = 1;
+// Schema 2 holds one entry per installed skill; schema 1 held exactly one
+// skill at the top level and is still read (and migrated on the next write).
+const lockSchemaVersion = 2;
+const legacyLockSchemaVersion = 1;
 const lockRelativePath = path.join(".ddduck", "agent-skills.lock.json");
 
 const defaultOperations = {
@@ -38,16 +41,18 @@ const defaultOperations = {
   writeFileSync,
 };
 
-const codexSkillDirectory = path.join(".agents", "skills", "update-ddduck-specs");
-const claudeSkillDirectory = path.join(".claude", "skills", "update-ddduck-specs");
 const skillFileName = "SKILL.md";
 
-const hostSkillAdapters = {
-  codex: {
-    host: "codex",
-    relativePath: codexSkillDirectory,
+// Every host path is derived from the skill name, so the same topologies serve
+// any bundled skill without a per-skill special case.
+function hostSkillAdapters(skillName) {
+  const codexSkillDirectory = path.join(".agents", "skills", skillName);
+  const claudeSkillDirectory = path.join(".claude", "skills", skillName);
+  const directoryAdapter = (host, relativePath) => ({
+    host,
+    relativePath,
     lockEntry() {
-      return { host: this.host, path: ".agents/skills/update-ddduck-specs" };
+      return { host: this.host, path: toPosixPath(this.relativePath) };
     },
     parentPaths(adapterPath) {
       return [path.dirname(path.dirname(adapterPath)), path.dirname(adapterPath)];
@@ -61,70 +66,108 @@ const hostSkillAdapters = {
       touched.push(adapterPath);
       operations.mkdirSync(adapterPath, { recursive: true });
     },
-  },
-  claudeDirectory: {
-    host: "claude-code",
-    relativePath: claudeSkillDirectory,
-    lockEntry() {
-      return { host: this.host, path: ".claude/skills/update-ddduck-specs" };
+  });
+  return {
+    codex: directoryAdapter("codex", codexSkillDirectory),
+    claudeDirectory: directoryAdapter("claude-code", claudeSkillDirectory),
+    claudeSymlink: {
+      host: "claude-code",
+      relativePath: claudeSkillDirectory,
+      target: `../../${toPosixPath(codexSkillDirectory)}`,
+      lockEntry() {
+        return { host: this.host, path: toPosixPath(this.relativePath), target: this.target };
+      },
+      parentPaths(adapterPath) {
+        return [path.dirname(path.dirname(adapterPath)), path.dirname(adapterPath)];
+      },
+      inspect({ adapterPath, operations }) {
+        const state = pathState(adapterPath, operations);
+        if (state.type === "absent") return "absent";
+        if (state.type !== "symlink" || operations.readlinkSync(adapterPath) !== this.target) return "conflict";
+        return pathState(path.join(adapterPath, skillFileName), operations).type === "file" ? "valid" : "conflict";
+      },
+      materialize({ adapterPath, operations, touched }) {
+        touched.push(path.dirname(adapterPath), adapterPath);
+        operations.mkdirSync(path.dirname(adapterPath), { recursive: true });
+        operations.symlinkSync(this.target, adapterPath);
+      },
     },
-    parentPaths(adapterPath) {
-      return [path.dirname(path.dirname(adapterPath)), path.dirname(adapterPath)];
-    },
-    inspect({ adapterPath, operations }) {
-      const state = pathState(adapterPath, operations);
-      if (state.type === "absent") return "absent";
-      return state.type === "directory" ? "valid" : "conflict";
-    },
-    materialize({ adapterPath, operations, touched }) {
-      touched.push(adapterPath);
-      operations.mkdirSync(adapterPath, { recursive: true });
-    },
-  },
-  claudeSymlink: {
-    host: "claude-code",
-    relativePath: claudeSkillDirectory,
-    target: "../../.agents/skills/update-ddduck-specs",
-    lockEntry() {
-      return { host: this.host, path: ".claude/skills/update-ddduck-specs", target: this.target };
-    },
-    parentPaths(adapterPath) {
-      return [path.dirname(path.dirname(adapterPath)), path.dirname(adapterPath)];
-    },
-    inspect({ adapterPath, operations }) {
-      const state = pathState(adapterPath, operations);
-      if (state.type === "absent") return "absent";
-      if (state.type !== "symlink" || operations.readlinkSync(adapterPath) !== this.target) return "conflict";
-      return pathState(path.join(adapterPath, skillFileName), operations).type === "file" ? "valid" : "conflict";
-    },
-    materialize({ adapterPath, operations, touched }) {
-      touched.push(path.dirname(adapterPath), adapterPath);
-      operations.mkdirSync(path.dirname(adapterPath), { recursive: true });
-      operations.symlinkSync(this.target, adapterPath);
-    },
-  },
-};
+  };
+}
 
-const installTopologies = [
-  {
-    id: "codex",
-    canonicalRelativePath: path.join(codexSkillDirectory, skillFileName),
-    adapters: [hostSkillAdapters.codex],
-  },
-  {
-    id: "claude-code",
-    canonicalRelativePath: path.join(claudeSkillDirectory, skillFileName),
-    adapters: [hostSkillAdapters.claudeDirectory],
-  },
-  {
-    id: "shared",
-    canonicalRelativePath: path.join(codexSkillDirectory, skillFileName),
-    adapters: [hostSkillAdapters.codex, hostSkillAdapters.claudeSymlink],
-  },
-];
+function installTopologies(skillName) {
+  const adapters = hostSkillAdapters(skillName);
+  return [
+    {
+      id: "codex",
+      canonicalRelativePath: path.join(adapters.codex.relativePath, skillFileName),
+      adapters: [adapters.codex],
+    },
+    {
+      id: "claude-code",
+      canonicalRelativePath: path.join(adapters.claudeDirectory.relativePath, skillFileName),
+      adapters: [adapters.claudeDirectory],
+    },
+    {
+      id: "shared",
+      canonicalRelativePath: path.join(adapters.codex.relativePath, skillFileName),
+      adapters: [adapters.codex, adapters.claudeSymlink],
+    },
+  ];
+}
 
 /**
- * Install (or upgrade) the bundled skill into a repository: load, plan, apply.
+ * List the skills bundled under a skills root: every directory holding a
+ * SKILL.md, sorted by name so selection and reporting stay deterministic.
+ * @param {string} skillsRoot - Directory containing one directory per bundled skill.
+ * @param {{operations?: object}} [options] - fs overrides for tests.
+ * @returns {string[]} Bundled skill names, sorted; empty when the root is absent.
+ */
+export function listBundledSkills(skillsRoot, { operations = {} } = {}) {
+  const resolvedOperations = { ...defaultOperations, ...operations };
+  let entries;
+  try {
+    entries = resolvedOperations.readdirSync(skillsRoot, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => pathState(path.join(skillsRoot, name, skillFileName), resolvedOperations).type === "file")
+    .sort();
+}
+
+/**
+ * Install several bundled skills into one repository, in the given order.
+ * A failing skill never blocks the others: each outcome carries either the
+ * installation result or the error, so the caller can report the complete
+ * picture and choose the exit status.
+ * @param {{repository: string, skillsRoot: string, skillNames: string[], packageVersion: string, operations?: object}} options - Repository root, bundled skills root, skills to install, ddduck version for the lock, and fs overrides.
+ * @returns {{skill: string, action?: string, skillSha256?: string, canonicalPath?: string, lockPath?: string, error?: Error}[]} One outcome per requested skill, in request order.
+ */
+export function installBundledSkills({ repository, skillsRoot, skillNames, packageVersion, operations = {} }) {
+  return skillNames.map((skillName) => {
+    try {
+      return {
+        skill: skillName,
+        ...installSkill({
+          repository,
+          skillName,
+          skillPath: path.join(skillsRoot, skillName, skillFileName),
+          packageVersion,
+          operations,
+        }),
+      };
+    } catch (error) {
+      return { skill: skillName, error };
+    }
+  });
+}
+
+/**
+ * Install (or upgrade) one bundled skill into a repository: load, plan, apply.
  * @param {{repository: string, skillName: string, skillPath: string, packageVersion: string, operations?: object}} options - Repository root, skill identity, bundled asset path, and ddduck version for the lock.
  * @returns {{action: "create"|"upgrade"|"no-op", skillSha256: string, canonicalPath: string, lockPath: string}} The installation result.
  */
@@ -160,17 +203,21 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
   const root = path.resolve(repository);
   const lockPath = path.join(root, lockRelativePath);
   const lockState = readLock(lockPath, resolvedOperations);
-  const topology = selectTopology({ root, lockState, operations: resolvedOperations });
+  if (lockState.type === "invalid") throw incompleteLock(lockPath, skillName);
+  const entries = lockState.type === "valid" ? lockState.entries : [];
+  // Entries for other skills are untouched state this install must preserve.
+  const otherEntries = entries.filter((entry) => entry.skill !== skillName);
+  const lockedEntry = entries.find((entry) => entry.skill === skillName);
+  const topology = selectTopology({ root, skillName, lockedEntry, operations: resolvedOperations });
   const paths = installationPaths(root, topology);
   assertDirectoryParents(paths, topology, resolvedOperations);
   const canonical = pathState(paths.canonical, resolvedOperations);
   const adapters = inspectHostAdapters(paths, topology, resolvedOperations);
   const conflictingAdapter = adapters.find(({ state }) => state === "conflict");
 
-  if (lockState.type === "invalid") throw incompleteLock(paths.lock);
-  if (conflictingAdapter) throw conflictingHostAdapter(conflictingAdapter, paths);
+  if (conflictingAdapter) throw conflictingHostAdapter(conflictingAdapter, paths, skillName);
 
-  if (lockState.type === "absent") {
+  if (!lockedEntry) {
     const canonicalDirectory = pathState(paths.canonicalDirectory, resolvedOperations);
     if (
       canonicalDirectory.type === "directory" &&
@@ -180,32 +227,37 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
       throw conflictingHostState(
         `Conflicting canonical skill directory: ${paths.canonicalDirectory}`,
         paths.canonicalDirectory,
+        skillName,
       );
     }
     if (canonical.type === "absent") {
-      return createPlan({ paths, adapters, writeCanonical: true });
+      return createPlan({ paths, adapters, otherEntries, writeCanonical: true });
     }
     if (canonical.type !== "file" || sha256(resolvedOperations.readFileSync(paths.canonical)) !== bundle.sha256) {
-      throw conflictingHostState(`Conflicting canonical skill destination: ${paths.canonical}`, paths.canonical);
+      throw conflictingHostState(
+        `Conflicting canonical skill destination: ${paths.canonical}`,
+        paths.canonical,
+        skillName,
+      );
     }
-    return createPlan({ paths, adapters, writeCanonical: false });
+    return createPlan({ paths, adapters, otherEntries, writeCanonical: false });
   }
 
-  const lock = lockState.value;
-  if (!isValidLock(lock, skillName, topology)) throw incompleteLock(paths.lock);
-  if (canonical.type === "absent") return createPlan({ paths, adapters, writeCanonical: true });
-  if (canonical.type !== "file") throw locallyModifiedCanonical(paths.canonical);
-  if (sha256(resolvedOperations.readFileSync(paths.canonical)) !== lock.skillSha256) {
-    throw locallyModifiedCanonical(paths.canonical);
+  if (!isValidLock(lockedEntry, topology)) throw incompleteLock(paths.lock, skillName);
+  if (canonical.type === "absent") return createPlan({ paths, adapters, otherEntries, writeCanonical: true });
+  if (canonical.type !== "file") throw locallyModifiedCanonical(paths.canonical, skillName);
+  if (sha256(resolvedOperations.readFileSync(paths.canonical)) !== lockedEntry.skillSha256) {
+    throw locallyModifiedCanonical(paths.canonical, skillName);
   }
-  if (adapters.some(({ state }) => state !== "valid")) throw incompleteLock(paths.lock);
+  if (adapters.some(({ state }) => state !== "valid")) throw incompleteLock(paths.lock, skillName);
 
   return {
-    action: lock.skillSha256 === bundle.sha256 ? "no-op" : "upgrade",
+    action: lockedEntry.skillSha256 === bundle.sha256 ? "no-op" : "upgrade",
     paths,
     topology,
+    otherEntries,
     adaptersToMaterialize: [],
-    writeCanonical: lock.skillSha256 !== bundle.sha256,
+    writeCanonical: lockedEntry.skillSha256 !== bundle.sha256,
   };
 }
 
@@ -244,7 +296,7 @@ export function applySkillInstall({ packageVersion, bundle, plan, operations = {
 
     atomicWrite(
       plan.paths.lock,
-      `${JSON.stringify(createLock({ packageVersion, bundle, topology: plan.topology }), null, 2)}\n`,
+      `${JSON.stringify(createLock({ packageVersion, bundle, topology: plan.topology, otherEntries: plan.otherEntries }), null, 2)}\n`,
       resolvedOperations,
       touched,
     );
@@ -273,11 +325,12 @@ function installResult(action, bundle, plan) {
   };
 }
 
-function createPlan({ paths, adapters, writeCanonical }) {
+function createPlan({ paths, adapters, otherEntries, writeCanonical }) {
   return {
     action: "create",
     paths,
     topology: paths.topology,
+    otherEntries,
     adaptersToMaterialize: adapters.filter(({ state }) => state === "absent").map(({ adapter }) => adapter),
     writeCanonical,
   };
@@ -320,11 +373,52 @@ function readLock(lockPath, operations) {
   const state = pathState(lockPath, operations);
   if (state.type === "absent") return { type: "absent" };
   if (state.type !== "file") return { type: "invalid" };
+  let value;
   try {
-    return { type: "valid", value: JSON.parse(operations.readFileSync(lockPath, "utf8")) };
+    value = JSON.parse(operations.readFileSync(lockPath, "utf8"));
   } catch {
     return { type: "invalid" };
   }
+  const entries = lockEntries(value);
+  return entries ? { type: "valid", entries } : { type: "invalid" };
+}
+
+// A schema-1 lock recorded exactly one skill at the top level; read it as a
+// single entry so an installation made by an older ddduck keeps its identity,
+// and let the next write migrate the file to the multi-skill shape.
+function lockEntries(value) {
+  if (!value || typeof value !== "object") return null;
+  const records =
+    value.schemaVersion === lockSchemaVersion && Array.isArray(value.skills)
+      ? value.skills
+      : value.schemaVersion === legacyLockSchemaVersion
+        ? [value]
+        : null;
+  if (!records || !records.every(isWellFormedLockEntry)) return null;
+  const names = records.map(({ skill }) => skill);
+  if (new Set(names).size !== names.length) return null;
+  return records.map(({ skill, ddduckVersion, canonicalPath, skillSha256, adapters }) => ({
+    skill,
+    ddduckVersion,
+    canonicalPath,
+    skillSha256,
+    adapters,
+  }));
+}
+
+function isWellFormedLockEntry(record) {
+  return (
+    record &&
+    typeof record === "object" &&
+    typeof record.skill === "string" &&
+    record.skill.length > 0 &&
+    typeof record.ddduckVersion === "string" &&
+    record.ddduckVersion.length > 0 &&
+    typeof record.canonicalPath === "string" &&
+    record.canonicalPath.length > 0 &&
+    /^[a-f0-9]{64}$/.test(record.skillSha256) &&
+    Array.isArray(record.adapters)
+  );
 }
 
 function pathState(filePath, operations) {
@@ -340,42 +434,42 @@ function pathState(filePath, operations) {
   }
 }
 
-function selectTopology({ root, lockState, operations }) {
-  if (lockState.type === "valid") {
-    const topology = installTopologies.find(
-      (candidate) => toPosixPath(candidate.canonicalRelativePath) === toPosixPath(lockState.value.canonicalPath),
+function selectTopology({ root, skillName, lockedEntry, operations }) {
+  const topologies = installTopologies(skillName);
+  if (lockedEntry) {
+    const topology = topologies.find(
+      (candidate) => toPosixPath(candidate.canonicalRelativePath) === toPosixPath(lockedEntry.canonicalPath),
     );
-    return topology ?? installTopologies[0];
+    return topology ?? topologies[0];
   }
 
   const agents = pathState(path.join(root, ".agents"), operations).type;
   const claude = pathState(path.join(root, ".claude"), operations).type;
-  if (agents === "directory" && claude === "directory") return installTopologies.find(({ id }) => id === "shared");
-  if (claude === "directory") return installTopologies.find(({ id }) => id === "claude-code");
-  return installTopologies.find(({ id }) => id === "codex");
+  if (agents === "directory" && claude === "directory") return topologies.find(({ id }) => id === "shared");
+  if (claude === "directory") return topologies.find(({ id }) => id === "claude-code");
+  return topologies.find(({ id }) => id === "codex");
 }
 
-function isValidLock(lock, skillName, topology) {
+function isValidLock(entry, topology) {
   return (
-    lock &&
-    lock.schemaVersion === lockSchemaVersion &&
-    lock.skill === skillName &&
-    typeof lock.ddduckVersion === "string" &&
-    lock.ddduckVersion.length > 0 &&
-    toPosixPath(lock.canonicalPath) === toPosixPath(topology.canonicalRelativePath) &&
-    /^[a-f0-9]{64}$/.test(lock.skillSha256) &&
-    JSON.stringify(lock.adapters) === JSON.stringify(expectedAdapters(topology))
+    toPosixPath(entry.canonicalPath) === toPosixPath(topology.canonicalRelativePath) &&
+    JSON.stringify(entry.adapters) === JSON.stringify(expectedAdapters(topology))
   );
 }
 
-function createLock({ packageVersion, bundle, topology }) {
-  return {
-    schemaVersion: lockSchemaVersion,
+function createLock({ packageVersion, bundle, topology, otherEntries }) {
+  const entry = {
     skill: bundle.name,
     ddduckVersion: packageVersion,
     canonicalPath: toPosixPath(topology.canonicalRelativePath),
     skillSha256: bundle.sha256,
     adapters: expectedAdapters(topology),
+  };
+  return {
+    schemaVersion: lockSchemaVersion,
+    // Sorted by skill so the lock is a stable, reviewable diff whatever order
+    // the skills were installed in.
+    skills: [...otherEntries, entry].sort((left, right) => (left.skill < right.skill ? -1 : 1)),
   };
 }
 
@@ -383,19 +477,20 @@ function expectedAdapters(topology) {
   return topology.adapters.map((adapter) => adapter.lockEntry());
 }
 
-function conflictingHostAdapter({ adapter }, paths) {
+function conflictingHostAdapter({ adapter }, paths, skillName) {
   const label = adapter.host === "claude-code" ? "Claude Code" : adapter.host;
   return conflictingHostState(
     `Conflicting ${label} adapter: ${paths.adapters[adapter.host]}`,
     paths.adapters[adapter.host],
+    skillName,
   );
 }
 
 // Host-state conflicts are environment failures, not input failures: name the
 // pre-existing path the user must resolve instead of the usage hint.
-function conflictingHostState(message, conflictingPath) {
+function conflictingHostState(message, conflictingPath, skillName) {
   const error = new Error(message);
-  error.nextAction = `Move ${conflictingPath} aside or remove it, then re-run ddduck install skill update-ddduck-specs.`;
+  error.nextAction = `Move ${conflictingPath} aside or remove it, then re-run ddduck install skill ${skillName}.`;
   return error;
 }
 
@@ -440,17 +535,17 @@ function restoreAfterFailure({ plan, originalCanonical, canonicalWritten, materi
   return failures;
 }
 
-function incompleteLock(lockPath) {
+function incompleteLock(lockPath, skillName) {
   const error = new Error(`Incomplete or inconsistent skill lock: ${lockPath}`);
   // Deleting the lock is safe: the next install rebuilds it from the repository
   // state, and any canonical mismatch then surfaces as its own conflict.
-  error.nextAction = `Delete ${lockPath}, then re-run ddduck install skill update-ddduck-specs to rebuild it.`;
+  error.nextAction = `Delete ${lockPath}, then re-run ddduck install skill ${skillName} to rebuild it.`;
   return error;
 }
 
-function locallyModifiedCanonical(canonicalPath) {
+function locallyModifiedCanonical(canonicalPath, skillName) {
   const error = new Error(`Locally modified canonical skill: ${canonicalPath}`);
-  error.nextAction = `Revert or remove ${canonicalPath}, then re-run ddduck install skill update-ddduck-specs.`;
+  error.nextAction = `Revert or remove ${canonicalPath}, then re-run ddduck install skill ${skillName}.`;
   return error;
 }
 

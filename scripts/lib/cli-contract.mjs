@@ -119,12 +119,12 @@ export function renderHelp(command) {
       "Options: --id <model-node-id> (repeatable for context), --root <product-root>, --history.",
     ],
     install: [
-      "Syntax: ddduck install skill update-ddduck-specs [--repo <repository-root>]",
-      "Defaults: --repo is the current directory.",
-      "Writes: the selected host skill adapter and .ddduck/agent-skills.lock.json in --repo.",
-      "Success output: one text result with the action (created, upgraded, or no-op), repository, canonical path, and lock path.",
-      "Exit status: 0 on installation, no-op, or help; nonzero on invalid input or conflicting host state.",
-      "JSON: unavailable; --json is not accepted.",
+      "Syntax: ddduck install skill [<skill-name>] [--repo <repository-root>] [--json]",
+      "Defaults: --repo is the current directory; without <skill-name> every skill bundled in the package is installed.",
+      "Writes: the selected host skill adapter for each installed skill and .ddduck/agent-skills.lock.json in --repo.",
+      "Success output: one text result line per selected skill with the action (created, upgraded, or no-op), repository, canonical path, and lock path.",
+      "Exit status: 0 when every selected skill installs, no-ops, or help; 1 on invalid input or conflicting host state, after installing the skills that had none.",
+      "JSON: --json emits one JSON object with one result per selected skill.",
     ],
     create: [
       "Syntax: ddduck create guarantee --origin <origin> --classification <invariant|acceptance-criterion> --owner <domain-id> --statement <text> [--root <product-root>] [--json]",

@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { installSkill } from "../scripts/lib/skill-installer.mjs";
+import { installBundledSkills, installSkill, listBundledSkills } from "../scripts/lib/skill-installer.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundledSkill = path.join(root, "skills", "update-ddduck-specs", "SKILL.md");
@@ -34,12 +34,16 @@ test("defaults to a Codex canonical skill snapshot when no host directories exis
   assert.equal(readFileSync(path.join(repository, canonicalRelativePath), "utf8"), readFileSync(bundledSkill, "utf8"));
   assert.equal(existsSync(path.join(repository, ".claude")), false);
   assert.deepEqual(JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")), {
-    schemaVersion: 1,
-    skill: "update-ddduck-specs",
-    ddduckVersion: "test-version",
-    canonicalPath: ".agents/skills/update-ddduck-specs/SKILL.md",
-    skillSha256: result.skillSha256,
-    adapters: [{ host: "codex", path: ".agents/skills/update-ddduck-specs" }],
+    schemaVersion: 2,
+    skills: [
+      {
+        skill: "update-ddduck-specs",
+        ddduckVersion: "test-version",
+        canonicalPath: ".agents/skills/update-ddduck-specs/SKILL.md",
+        skillSha256: result.skillSha256,
+        adapters: [{ host: "codex", path: ".agents/skills/update-ddduck-specs" }],
+      },
+    ],
   });
 });
 
@@ -57,12 +61,16 @@ test("installs directly into Claude Code when only .claude exists", () => {
   assert.equal(existsSync(path.join(repository, ".agents")), false);
   assert.equal(lstatSync(path.join(repository, claudeRelativePath)).isDirectory(), true);
   assert.deepEqual(JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")), {
-    schemaVersion: 1,
-    skill: "update-ddduck-specs",
-    ddduckVersion: "test-version",
-    canonicalPath: ".claude/skills/update-ddduck-specs/SKILL.md",
-    skillSha256: result.skillSha256,
-    adapters: [{ host: "claude-code", path: ".claude/skills/update-ddduck-specs" }],
+    schemaVersion: 2,
+    skills: [
+      {
+        skill: "update-ddduck-specs",
+        ddduckVersion: "test-version",
+        canonicalPath: ".claude/skills/update-ddduck-specs/SKILL.md",
+        skillSha256: result.skillSha256,
+        adapters: [{ host: "claude-code", path: ".claude/skills/update-ddduck-specs" }],
+      },
+    ],
   });
 });
 
@@ -89,7 +97,7 @@ test("upgrades a clean managed snapshot when the bundled skill changes", () => {
   assert.equal(result.action, "upgrade");
   assert.equal(readFileSync(path.join(repository, canonicalRelativePath), "utf8"), "updated skill\n");
   assert.equal(
-    JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")).skillSha256,
+    JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8")).skills[0].skillSha256,
     result.skillSha256,
   );
 });
@@ -207,8 +215,8 @@ test("accepts a healthy install whose lock canonicalPath was committed with Wind
   install(repository);
   const lockPath = path.join(repository, lockRelativePath);
   const lock = JSON.parse(readFileSync(lockPath, "utf8"));
-  assert.equal(lock.canonicalPath.includes("\\"), false);
-  lock.canonicalPath = ".agents\\skills\\update-ddduck-specs\\SKILL.md";
+  assert.equal(lock.skills[0].canonicalPath.includes("\\"), false);
+  lock.skills[0].canonicalPath = ".agents\\skills\\update-ddduck-specs\\SKILL.md";
   writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
 
   const result = install(repository);
@@ -217,7 +225,12 @@ test("accepts a healthy install whose lock canonicalPath was committed with Wind
 });
 
 test("refuses incomplete or inconsistent locks before mutation", () => {
-  for (const lock of [{ skill: "update-ddduck-specs" }, { schemaVersion: 1, skill: "other" }]) {
+  for (const lock of [
+    { skill: "update-ddduck-specs" },
+    { schemaVersion: 1, skill: "other" },
+    { schemaVersion: 2, skills: [{ skill: "other" }] },
+    { schemaVersion: 2, skill: "update-ddduck-specs" },
+  ]) {
     const repository = makeRepository();
     const lockPath = path.join(repository, lockRelativePath);
     mkdirSync(path.dirname(lockPath), { recursive: true });
@@ -391,6 +404,130 @@ test("reports recovery failure alongside a lock-write failure", () => {
   assert.match(error.message, /simulated rollback rename failure/);
   assert.deepEqual(temporaryFiles(repository), []);
 });
+
+test("discovers every bundled skill directory that carries a SKILL.md", () => {
+  assert.deepEqual(listBundledSkills(path.join(root, "skills")), ["update-ddduck-specs"]);
+
+  const skillsRoot = makeSkillsRoot({ zulu: "zulu skill\n", alpha: "alpha skill\n" });
+  mkdirSync(path.join(skillsRoot, "no-skill-file"), { recursive: true });
+  writeFileSync(path.join(skillsRoot, "README.md"), "not a skill\n");
+
+  assert.deepEqual(listBundledSkills(skillsRoot), ["alpha", "zulu"]);
+  assert.deepEqual(listBundledSkills(path.join(skillsRoot, "missing")), []);
+});
+
+test("installs every bundled skill under one lock with one entry per skill", () => {
+  const repository = makeRepository();
+  const skillsRoot = makeSkillsRoot({ zulu: "zulu skill\n", alpha: "alpha skill\n" });
+
+  const outcomes = installBundled(repository, skillsRoot);
+
+  assert.deepEqual(
+    outcomes.map(({ skill, action }) => [skill, action]),
+    [
+      ["alpha", "create"],
+      ["zulu", "create"],
+    ],
+  );
+  for (const skill of ["alpha", "zulu"]) {
+    assert.equal(
+      readFileSync(path.join(repository, ".agents", "skills", skill, "SKILL.md"), "utf8"),
+      `${skill} skill\n`,
+    );
+  }
+  const lock = JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8"));
+  assert.equal(lock.schemaVersion, 2);
+  assert.deepEqual(
+    lock.skills.map(({ skill, canonicalPath }) => [skill, canonicalPath]),
+    [
+      ["alpha", ".agents/skills/alpha/SKILL.md"],
+      ["zulu", ".agents/skills/zulu/SKILL.md"],
+    ],
+  );
+
+  const repeated = installBundled(repository, skillsRoot);
+
+  assert.deepEqual(
+    repeated.map(({ action }) => action),
+    ["no-op", "no-op"],
+  );
+});
+
+test("installs the remaining skills when one skill conflicts, and names the failure", () => {
+  const repository = makeRepository();
+  const skillsRoot = makeSkillsRoot({ alpha: "alpha skill\n", zulu: "zulu skill\n" });
+  const blocked = path.join(repository, ".agents", "skills", "alpha", "SKILL.md");
+  mkdirSync(path.dirname(blocked), { recursive: true });
+  writeFileSync(blocked, "user skill\n");
+
+  const outcomes = installBundled(repository, skillsRoot);
+
+  assert.equal(outcomes[0].skill, "alpha");
+  assert.match(outcomes[0].error.message, /Conflicting canonical skill destination: .*alpha.*SKILL\.md/);
+  assert.match(outcomes[0].error.nextAction, /re-run ddduck install skill alpha/);
+  assert.equal(readFileSync(blocked, "utf8"), "user skill\n");
+  assert.equal(outcomes[1].action, "create");
+  assert.equal(readFileSync(path.join(repository, ".agents", "skills", "zulu", "SKILL.md"), "utf8"), "zulu skill\n");
+  const lock = JSON.parse(readFileSync(path.join(repository, lockRelativePath), "utf8"));
+  assert.deepEqual(
+    lock.skills.map(({ skill }) => skill),
+    ["zulu"],
+  );
+});
+
+test("reads a version-1 single-skill lock and migrates it on the next write", () => {
+  const repository = makeRepository();
+  const skillsRoot = makeSkillsRoot({ alpha: "alpha skill\n", zulu: "zulu skill\n" });
+  installBundledSkills({
+    repository,
+    skillsRoot,
+    skillNames: ["alpha"],
+    packageVersion: "test-version",
+  });
+  const lockPath = path.join(repository, lockRelativePath);
+  const [migrated] = JSON.parse(readFileSync(lockPath, "utf8")).skills;
+  writeFileSync(lockPath, `${JSON.stringify({ schemaVersion: 1, ...migrated }, null, 2)}\n`);
+  const legacyLock = readFileSync(lockPath, "utf8");
+
+  const unchanged = installBundledSkills({
+    repository,
+    skillsRoot,
+    skillNames: ["alpha"],
+    packageVersion: "test-version",
+  });
+
+  assert.equal(unchanged[0].action, "no-op");
+  assert.equal(readFileSync(lockPath, "utf8"), legacyLock, "a no-op must not rewrite the lock");
+
+  const outcomes = installBundled(repository, skillsRoot);
+
+  assert.deepEqual(
+    outcomes.map(({ action }) => action),
+    ["no-op", "create"],
+  );
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  assert.equal(lock.schemaVersion, 2);
+  assert.deepEqual(lock.skills, [migrated, { ...lock.skills[1] }]);
+  assert.equal(lock.skills[1].skill, "zulu");
+});
+
+function installBundled(repository, skillsRoot) {
+  return installBundledSkills({
+    repository,
+    skillsRoot,
+    skillNames: listBundledSkills(skillsRoot),
+    packageVersion: "test-version",
+  });
+}
+
+function makeSkillsRoot(skills) {
+  const skillsRoot = mkdtempSync(path.join(tmpdir(), "ddduck-skill-bundle-root-"));
+  for (const [name, content] of Object.entries(skills)) {
+    mkdirSync(path.join(skillsRoot, name), { recursive: true });
+    writeFileSync(path.join(skillsRoot, name, "SKILL.md"), content);
+  }
+  return skillsRoot;
+}
 
 function install(repository, skillPath = bundledSkill) {
   return installSkill({
