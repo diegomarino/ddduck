@@ -207,7 +207,10 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
 
   const lock = lockState.value;
   if (!isValidLock(lock, skillName, topology)) throw incompleteLock(paths.lock);
-  if (canonical.type === "absent") return createPlan({ paths, adapters, writeBundle: true });
+  if (canonical.type === "absent") {
+    assertRemainingBundleMatchesLock(paths, lock, resolvedOperations);
+    return createPlan({ paths, adapters, writeBundle: true });
+  }
   if (canonical.type !== "file") throw locallyModifiedCanonical(paths.canonical);
   assertInstalledBundleMatchesLock(paths, lock, resolvedOperations);
   if (adapters.some(({ state }) => state !== "valid")) throw incompleteLock(paths.lock);
@@ -563,6 +566,18 @@ function assertInstalledBundleMatchesLock(paths, lock, operations) {
     JSON.stringify(installed.map(({ path: relativePath }) => relativePath)) !== JSON.stringify(expectedPaths) ||
     installed.some((file, index) => file.sha256 !== lock.files[index].sha256)
   ) {
+    throw locallyModifiedBundle(paths.canonicalDirectory);
+  }
+}
+
+function assertRemainingBundleMatchesLock(paths, lock, operations) {
+  const installed = snapshotDirectory(paths.canonicalDirectory, operations) ?? [];
+  const expected = new Map(
+    lock.schemaVersion === 1
+      ? [[skillFileName, lock.skillSha256]]
+      : lock.files.map(({ path: relativePath, sha256: fileSha256 }) => [relativePath, fileSha256]),
+  );
+  if (installed.some((file) => expected.get(file.path) !== file.sha256)) {
     throw locallyModifiedBundle(paths.canonicalDirectory);
   }
 }

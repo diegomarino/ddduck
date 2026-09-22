@@ -195,6 +195,21 @@ test("repairs a valid lock whose canonical skill file is missing", () => {
   assert.equal(readFileSync(lockPath, "utf8"), lockBefore);
 });
 
+test("refuses to repair a missing skill entrypoint over a modified managed reference", () => {
+  const repository = makeRepository();
+  install(repository);
+  const canonicalPath = path.join(repository, canonicalRelativePath);
+  const installedReference = path.join(repository, codexAdapterRelativePath, "references", "reviewing-changes.md");
+  rmSync(canonicalPath);
+  writeFileSync(installedReference, "local modification\n");
+
+  const error = captureError(() => install(repository));
+
+  assert.match(error.message, /Locally modified canonical skill bundle/);
+  assert.equal(existsSync(canonicalPath), false);
+  assert.equal(readFileSync(installedReference, "utf8"), "local modification\n");
+});
+
 test("treats an empty lockless managed canonical directory as absent", () => {
   const repository = makeRepository();
   mkdirSync(path.join(repository, codexAdapterRelativePath), { recursive: true });
