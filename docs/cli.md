@@ -256,15 +256,28 @@ no .agents/ or .claude/   -> .agents/skills/update-ddduck-specs/SKILL.md
                              .claude/skills/update-ddduck-specs -> ../../.agents/skills/update-ddduck-specs
 ```
 
+The topology in force is read from the repository, not from a record: an existing installation is
+recognized by its canonical `SKILL.md` and the shape of the Claude Code skill path beside it. A
+Codex installation in a repository that later adopts `.claude/` gains the symlink on the next
+install; a Claude Code installation is never relocated, because that would move the canonical file
+rather than add a link beside it. A host adapter that was removed is re-created on the next
+install. The installer does not create a host directory for a host that is absent from the
+repository, except for the `.agents/` fallback when no host directory exists.
+
 The installer writes one `.ddduck/agent-skills.lock.json` for the repository, holding one entry
-per installed skill — its name, the selected canonical path, host adapters, package version, and
-installed `SKILL.md` SHA-256 — sorted by skill name. The file is `"schemaVersion": 2`; a
-`"schemaVersion": 1` lock written by an earlier ddduck recorded exactly one skill at the top
-level and is still read, then migrated to the current shape the next time a skill is created or
-upgraded. Each skill is planned and applied independently, so a topology is chosen per skill and
-an entry for one skill is never rewritten by another skill's installation. The installer does not
-create a host directory for a host that is absent from the repository, except for the `.agents/`
-fallback when no host directory exists.
+per installed skill — its name, the canonical path, host adapters, package version, and installed
+`SKILL.md` SHA-256 — sorted by skill name. The file is `"schemaVersion": 2`; a `"schemaVersion": 1`
+lock written by an earlier ddduck recorded exactly one skill at the top level and is still read,
+then migrated to the current shape the next time a skill is created or upgraded.
+
+The lock is a provenance note, not an authority. No install decision is taken from it: a lock that
+is missing, damaged, truncated, or written by a future schema degrades to "no entries" and is
+rewritten rather than failing the command. The single field consulted is `skillSha256`, as a hint —
+when it matches the installed file, those bytes are ones ddduck wrote, so replacing them is a
+silent `upgraded`. Without that hint an installed file that differs from the bundled one is
+indistinguishable from a file you wrote yourself, and the command refuses it by name instead of
+overwriting it; restore the file or move it aside and re-run. Each skill is planned and applied
+independently, so a topology is chosen per skill, and a lost entry re-appears on the next install.
 
 On success it prints one result line per selected skill naming the action (`created`, `upgraded`,
 or `no-op`), the repository, the canonical skill path, and the lock path. With `--json` it emits

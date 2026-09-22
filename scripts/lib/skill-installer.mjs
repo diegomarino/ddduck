@@ -1,12 +1,19 @@
 /**
  * Installer for the agent skills bundled in the package, behind `ddduck
  * install skill`. Discovers the bundled skills, selects a host topology per
- * skill from the repository state (codex .agents/, claude-code .claude/, or
+ * skill by inspecting the repository (codex .agents/, claude-code .claude/, or
  * shared via symlink), plans create, upgrade, or no-op against the canonical
- * SKILL.md and the shared .ddduck/agent-skills.lock.json lock (one entry per
- * installed skill), and applies each plan with atomic writes plus rollback of
- * everything touched on failure. Conflicting host state or a locally modified
- * canonical file refuses with a nextAction naming the exact path to resolve.
+ * SKILL.md on disk, and applies each plan with atomic writes plus rollback of
+ * everything touched on failure. Conflicting host state or a canonical file
+ * this installer never wrote refuses with a nextAction naming the exact path
+ * to resolve.
+ *
+ * .ddduck/agent-skills.lock.json records one entry per installed skill, but it
+ * is a provenance note rather than an authority: every decision is taken from
+ * the filesystem, a damaged or missing lock degrades to no entries instead of
+ * failing an install, and the only field consulted is skillSha256 — the hint
+ * that the installed bytes are ones this installer wrote, which makes an
+ * upgrade safe and silent.
  */
 
 import {
@@ -26,7 +33,6 @@ import path from "node:path";
 // Schema 2 holds one entry per installed skill; schema 1 held exactly one
 // skill at the top level and is still read (and migrated on the next write).
 const lockSchemaVersion = 2;
-const legacyLockSchemaVersion = 1;
 const lockRelativePath = path.join(".ddduck", "agent-skills.lock.json");
 
 const defaultOperations = {
@@ -192,36 +198,33 @@ export function loadSkillBundle({ skillName, skillPath, operations = {} }) {
 }
 
 /**
- * Inspect the repository's lock, canonical file, and host adapters and decide
- * the action: create, upgrade, or no-op — or throw on conflicting host state,
- * an incomplete lock, or a locally modified canonical skill.
+ * Decide the action — create, upgrade, or no-op — by inspecting the canonical
+ * file and the host adapters. Every decision comes from the filesystem; the
+ * lock contributes one hint, the SHA-256 of the bytes this installer last
+ * wrote, which distinguishes an older installed skill (safe to upgrade) from a
+ * file the installer never wrote (refused). Throws on conflicting host state
+ * or an unrecognized canonical file.
  * @param {{repository: string, skillName: string, bundle: {sha256: string}, operations?: object}} options - Repository root, skill name, loaded bundle, and fs overrides.
- * @returns {{action: string, paths: object, topology: object, adaptersToMaterialize: object[], writeCanonical: boolean}} The install plan for applySkillInstall.
+ * @returns {{action: string, paths: object, topology: object, otherEntries: object[], adaptersToMaterialize: object[], writeCanonical: boolean}} The install plan for applySkillInstall.
  */
 export function planSkillInstall({ repository, skillName, bundle, operations = {} }) {
   const resolvedOperations = { ...defaultOperations, ...operations };
   const root = path.resolve(repository);
-  const lockPath = path.join(root, lockRelativePath);
-  const lockState = readLock(lockPath, resolvedOperations);
-  if (lockState.type === "invalid") throw incompleteLock(lockPath, skillName);
-  const entries = lockState.type === "valid" ? lockState.entries : [];
-  // Entries for other skills are untouched state this install must preserve.
+  const entries = readLockEntries(path.join(root, lockRelativePath), resolvedOperations);
+  // Entries for other skills are untouched provenance this install carries forward.
   const otherEntries = entries.filter((entry) => entry.skill !== skillName);
-  const lockedEntry = entries.find((entry) => entry.skill === skillName);
-  const topology = selectTopology({ root, skillName, lockedEntry, operations: resolvedOperations });
+  const installedSha256 = entries.find((entry) => entry.skill === skillName)?.skillSha256;
+  const topology = selectTopology({ root, skillName, operations: resolvedOperations });
   const paths = installationPaths(root, topology);
   assertDirectoryParents(paths, topology, resolvedOperations);
-  const canonical = pathState(paths.canonical, resolvedOperations);
   const adapters = inspectHostAdapters(paths, topology, resolvedOperations);
   const conflictingAdapter = adapters.find(({ state }) => state === "conflict");
-
   if (conflictingAdapter) throw conflictingHostAdapter(conflictingAdapter, paths, skillName);
 
-  if (!lockedEntry) {
-    const canonicalDirectory = pathState(paths.canonicalDirectory, resolvedOperations);
+  const canonical = pathState(paths.canonical, resolvedOperations);
+  if (canonical.type === "absent") {
     if (
-      canonicalDirectory.type === "directory" &&
-      canonical.type === "absent" &&
+      pathState(paths.canonicalDirectory, resolvedOperations).type === "directory" &&
       resolvedOperations.readdirSync(paths.canonicalDirectory).length > 0
     ) {
       throw conflictingHostState(
@@ -230,35 +233,36 @@ export function planSkillInstall({ repository, skillName, bundle, operations = {
         skillName,
       );
     }
-    if (canonical.type === "absent") {
-      return createPlan({ paths, adapters, otherEntries, writeCanonical: true });
-    }
-    if (canonical.type !== "file" || sha256(resolvedOperations.readFileSync(paths.canonical)) !== bundle.sha256) {
-      throw conflictingHostState(
-        `Conflicting canonical skill destination: ${paths.canonical}`,
-        paths.canonical,
-        skillName,
-      );
-    }
-    return createPlan({ paths, adapters, otherEntries, writeCanonical: false });
+    return installPlan({ action: "create", paths, adapters, otherEntries, writeCanonical: true });
+  }
+  if (canonical.type !== "file") {
+    throw conflictingHostState(
+      `Conflicting canonical skill destination: ${paths.canonical}`,
+      paths.canonical,
+      skillName,
+    );
   }
 
-  if (!isValidLock(lockedEntry, topology)) throw incompleteLock(paths.lock, skillName);
-  if (canonical.type === "absent") return createPlan({ paths, adapters, otherEntries, writeCanonical: true });
-  if (canonical.type !== "file") throw locallyModifiedCanonical(paths.canonical, skillName);
-  if (sha256(resolvedOperations.readFileSync(paths.canonical)) !== lockedEntry.skillSha256) {
-    throw locallyModifiedCanonical(paths.canonical, skillName);
+  const canonicalSha256 = sha256(resolvedOperations.readFileSync(paths.canonical));
+  if (canonicalSha256 === bundle.sha256) {
+    // The bundled bytes are already in place; only a missing adapter or a lock
+    // that does not yet record this installation is left to write.
+    const settled = installedSha256 === canonicalSha256 && adapters.every(({ state }) => state === "valid");
+    return installPlan({
+      action: settled ? "no-op" : "create",
+      paths,
+      adapters,
+      otherEntries,
+      writeCanonical: false,
+    });
   }
-  if (adapters.some(({ state }) => state !== "valid")) throw incompleteLock(paths.lock, skillName);
-
-  return {
-    action: lockedEntry.skillSha256 === bundle.sha256 ? "no-op" : "upgrade",
-    paths,
-    topology,
-    otherEntries,
-    adaptersToMaterialize: [],
-    writeCanonical: lockedEntry.skillSha256 !== bundle.sha256,
-  };
+  // The hint recognizes the installed bytes as the ones this installer wrote,
+  // so replacing them loses no work the user did.
+  if (installedSha256 === canonicalSha256) {
+    return installPlan({ action: "upgrade", paths, adapters, otherEntries, writeCanonical: true });
+  }
+  if (installedSha256 !== undefined) throw locallyModifiedCanonical(paths.canonical, skillName);
+  throw conflictingHostState(`Conflicting canonical skill destination: ${paths.canonical}`, paths.canonical, skillName);
 }
 
 /**
@@ -325,9 +329,9 @@ function installResult(action, bundle, plan) {
   };
 }
 
-function createPlan({ paths, adapters, otherEntries, writeCanonical }) {
+function installPlan({ action, paths, adapters, otherEntries, writeCanonical }) {
   return {
-    action: "create",
+    action,
     paths,
     topology: paths.topology,
     otherEntries,
@@ -369,56 +373,30 @@ function assertDirectoryParents(paths, topology, operations) {
   }
 }
 
-function readLock(lockPath, operations) {
-  const state = pathState(lockPath, operations);
-  if (state.type === "absent") return { type: "absent" };
-  if (state.type !== "file") return { type: "invalid" };
+// The lock is a provenance note, never an authority. Anything unreadable,
+// unexpected, or half-written degrades to "no entries" instead of failing the
+// install: the installation itself is described by the filesystem, and the
+// next successful install rewrites the note. A schema-1 lock recorded exactly
+// one skill at the top level and is read as a single entry.
+function readLockEntries(lockPath, operations) {
+  if (pathState(lockPath, operations).type !== "file") return [];
   let value;
   try {
     value = JSON.parse(operations.readFileSync(lockPath, "utf8"));
   } catch {
-    return { type: "invalid" };
+    return [];
   }
-  const entries = lockEntries(value);
-  return entries ? { type: "valid", entries } : { type: "invalid" };
-}
-
-// A schema-1 lock recorded exactly one skill at the top level; read it as a
-// single entry so an installation made by an older ddduck keeps its identity,
-// and let the next write migrate the file to the multi-skill shape.
-function lockEntries(value) {
-  if (!value || typeof value !== "object") return null;
-  const records =
-    value.schemaVersion === lockSchemaVersion && Array.isArray(value.skills)
-      ? value.skills
-      : value.schemaVersion === legacyLockSchemaVersion
-        ? [value]
-        : null;
-  if (!records || !records.every(isWellFormedLockEntry)) return null;
-  const names = records.map(({ skill }) => skill);
-  if (new Set(names).size !== names.length) return null;
-  return records.map(({ skill, ddduckVersion, canonicalPath, skillSha256, adapters }) => ({
-    skill,
-    ddduckVersion,
-    canonicalPath,
-    skillSha256,
-    adapters,
-  }));
-}
-
-function isWellFormedLockEntry(record) {
-  return (
-    record &&
-    typeof record === "object" &&
-    typeof record.skill === "string" &&
-    record.skill.length > 0 &&
-    typeof record.ddduckVersion === "string" &&
-    record.ddduckVersion.length > 0 &&
-    typeof record.canonicalPath === "string" &&
-    record.canonicalPath.length > 0 &&
-    /^[a-f0-9]{64}$/.test(record.skillSha256) &&
-    Array.isArray(record.adapters)
-  );
+  if (!value || typeof value !== "object") return [];
+  const records = Array.isArray(value.skills) ? value.skills : [value];
+  return records
+    .filter((record) => record && typeof record.skill === "string" && /^[a-f0-9]{64}$/.test(record.skillSha256))
+    .map(({ skill, ddduckVersion, canonicalPath, skillSha256, adapters }) => ({
+      skill,
+      ddduckVersion,
+      canonicalPath,
+      skillSha256,
+      adapters,
+    }));
 }
 
 function pathState(filePath, operations) {
@@ -434,27 +412,30 @@ function pathState(filePath, operations) {
   }
 }
 
-function selectTopology({ root, skillName, lockedEntry, operations }) {
+// Which topology is in force is a fact about the repository, so it is read
+// from the repository: an existing installation is recognized by its canonical
+// SKILL.md plus the shape of the Claude Code skill path beside it. Only when
+// nothing is installed does the least-intrusive host heuristic choose.
+function selectTopology({ root, skillName, operations }) {
   const topologies = installTopologies(skillName);
-  if (lockedEntry) {
-    const topology = topologies.find(
-      (candidate) => toPosixPath(candidate.canonicalRelativePath) === toPosixPath(lockedEntry.canonicalPath),
-    );
-    return topology ?? topologies[0];
-  }
-
+  const withId = (id) => topologies.find((topology) => topology.id === id);
+  const canonicalExists = (topology) =>
+    pathState(path.join(root, topology.canonicalRelativePath), operations).type === "file";
+  const claudeSkillPath = pathState(path.join(root, withId("claude-code").adapters[0].relativePath), operations).type;
   const agents = pathState(path.join(root, ".agents"), operations).type;
   const claude = pathState(path.join(root, ".claude"), operations).type;
-  if (agents === "directory" && claude === "directory") return topologies.find(({ id }) => id === "shared");
-  if (claude === "directory") return topologies.find(({ id }) => id === "claude-code");
-  return topologies.find(({ id }) => id === "codex");
-}
 
-function isValidLock(entry, topology) {
-  return (
-    toPosixPath(entry.canonicalPath) === toPosixPath(topology.canonicalRelativePath) &&
-    JSON.stringify(entry.adapters) === JSON.stringify(expectedAdapters(topology))
-  );
+  // A Codex canonical file in a repository that also uses Claude Code is the
+  // shared topology, whether or not its symlink is currently there: adapter
+  // inspection then materializes a missing one and refuses a conflicting one.
+  if (canonicalExists(withId("codex"))) return claude === "directory" ? withId("shared") : withId("codex");
+  // A Claude Code installation stays where it is; promoting it would move the
+  // canonical file rather than add a link beside it.
+  if (claudeSkillPath === "directory" && canonicalExists(withId("claude-code"))) return withId("claude-code");
+
+  if (agents === "directory" && claude === "directory") return withId("shared");
+  if (claude === "directory") return withId("claude-code");
+  return withId("codex");
 }
 
 function createLock({ packageVersion, bundle, topology, otherEntries }) {
@@ -533,14 +514,6 @@ function restoreAfterFailure({ plan, originalCanonical, canonicalWritten, materi
     failures.push(`restore canonical skill: ${error.message}`);
   }
   return failures;
-}
-
-function incompleteLock(lockPath, skillName) {
-  const error = new Error(`Incomplete or inconsistent skill lock: ${lockPath}`);
-  // Deleting the lock is safe: the next install rebuilds it from the repository
-  // state, and any canonical mismatch then surfaces as its own conflict.
-  error.nextAction = `Delete ${lockPath}, then re-run ddduck install skill ${skillName} to rebuild it.`;
-  return error;
 }
 
 function locallyModifiedCanonical(canonicalPath, skillName) {

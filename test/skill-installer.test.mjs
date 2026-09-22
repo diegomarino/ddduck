@@ -210,35 +210,128 @@ test("preserves unrelated skills and host configuration", () => {
   assert.equal(readFileSync(unrelatedClaudeSkill, "utf8"), "unrelated Claude\n");
 });
 
-test("accepts a healthy install whose lock canonicalPath was committed with Windows separators", () => {
-  const repository = makeRepository();
-  install(repository);
-  const lockPath = path.join(repository, lockRelativePath);
-  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
-  assert.equal(lock.skills[0].canonicalPath.includes("\\"), false);
-  lock.skills[0].canonicalPath = ".agents\\skills\\update-ddduck-specs\\SKILL.md";
-  writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
-
-  const result = install(repository);
-
-  assert.equal(result.action, "no-op");
-});
-
-test("refuses incomplete or inconsistent locks before mutation", () => {
-  for (const lock of [
-    { skill: "update-ddduck-specs" },
-    { schemaVersion: 1, skill: "other" },
-    { schemaVersion: 2, skills: [{ skill: "other" }] },
-    { schemaVersion: 2, skill: "update-ddduck-specs" },
+test("never fails an install over a damaged lock, and rewrites it", () => {
+  for (const damaged of [
+    "not json at all\n",
+    "[]\n",
+    "null\n",
+    `${JSON.stringify({ skill: "update-ddduck-specs" })}\n`,
+    `${JSON.stringify({ schemaVersion: 7, skills: [{ skill: "update-ddduck-specs" }] })}\n`,
+    `${JSON.stringify({ schemaVersion: 2, skills: "truncated" })}\n`,
   ]) {
     const repository = makeRepository();
     const lockPath = path.join(repository, lockRelativePath);
     mkdirSync(path.dirname(lockPath), { recursive: true });
-    writeFileSync(lockPath, `${JSON.stringify(lock)}\n`);
+    writeFileSync(lockPath, damaged);
 
-    assert.throws(() => install(repository), /Incomplete or inconsistent skill lock: .*agent-skills\.lock\.json/);
-    assert.equal(existsSync(path.join(repository, canonicalRelativePath)), false);
+    const result = install(repository);
+
+    assert.equal(result.action, "create", `damaged lock must not fail the install: ${damaged.trim()}`);
+    assert.equal(
+      readFileSync(path.join(repository, canonicalRelativePath), "utf8"),
+      readFileSync(bundledSkill, "utf8"),
+    );
+    assert.deepEqual(
+      JSON.parse(readFileSync(lockPath, "utf8")).skills.map(({ skill, skillSha256 }) => [skill, skillSha256]),
+      [["update-ddduck-specs", result.skillSha256]],
+    );
   }
+});
+
+test("restores a lock entry dropped by a concurrent install without touching the other skill", () => {
+  const repository = makeRepository();
+  const skillsRoot = makeSkillsRoot({ alpha: "alpha skill\n", zulu: "zulu skill\n" });
+  installBundled(repository, skillsRoot);
+  const lockPath = path.join(repository, lockRelativePath);
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  // Exactly what a lost update leaves behind: alpha is installed on disk but
+  // its provenance entry was overwritten away by a concurrent zulu install.
+  writeFileSync(lockPath, `${JSON.stringify({ ...lock, skills: lock.skills.slice(1) }, null, 2)}\n`);
+
+  const outcomes = installBundled(repository, skillsRoot);
+
+  assert.deepEqual(
+    outcomes.map(({ skill, action }) => [skill, action]),
+    [
+      ["alpha", "create"],
+      ["zulu", "no-op"],
+    ],
+  );
+  assert.deepEqual(JSON.parse(readFileSync(lockPath, "utf8")), lock);
+});
+
+test("a dropped entry costs the silent upgrade, not the installation", () => {
+  const repository = makeRepository();
+  const original = makeBundle("original skill\n");
+  const updated = makeBundle("updated skill\n");
+  install(repository, original);
+  const lockPath = path.join(repository, lockRelativePath);
+  const emptied = `${JSON.stringify({ schemaVersion: 2, skills: [] }, null, 2)}\n`;
+  writeFileSync(lockPath, emptied);
+
+  // Same bundle: the installed bytes are recognized as the bundle itself.
+  assert.equal(install(repository, original).action, "create");
+  assert.equal(JSON.parse(readFileSync(lockPath, "utf8")).skills.length, 1);
+
+  // Newer bundle: without the hint, bytes this installer wrote are
+  // indistinguishable from a user's own file, so the refusal stands.
+  writeFileSync(lockPath, emptied);
+  const error = captureError(() => install(repository, updated));
+
+  assert.match(error.message, /Conflicting canonical skill destination: .*SKILL\.md/);
+  assert.match(error.nextAction, /Move .*SKILL\.md aside or remove it, then re-run ddduck install skill/);
+  assert.equal(readFileSync(path.join(repository, canonicalRelativePath), "utf8"), "original skill\n");
+});
+
+test("detects a lockless installation by inspection and never moves its canonical file", () => {
+  const repository = makeRepository();
+  install(repository);
+  rmSync(path.join(repository, ".ddduck"), { recursive: true, force: true });
+
+  const rediscovered = install(repository);
+
+  assert.equal(rediscovered.action, "create", "a lockless installation is recognized, then recorded again");
+  assert.equal(rediscovered.canonicalPath, ".agents/skills/update-ddduck-specs/SKILL.md");
+  assert.equal(existsSync(path.join(repository, claudeRelativePath)), false);
+
+  // Adopting Claude Code later links the existing Codex canonical rather than
+  // relocating it.
+  mkdirSync(path.join(repository, ".claude"), { recursive: true });
+  const shared = install(repository);
+
+  assert.equal(shared.canonicalPath, ".agents/skills/update-ddduck-specs/SKILL.md");
+  assert.equal(lstatSync(path.join(repository, claudeRelativePath)).isSymbolicLink(), true);
+  assert.equal(existsSync(path.join(repository, ".claude", "skills", "update-ddduck-specs", "SKILL.md")), true);
+});
+
+test("a Claude Code installation is never relocated when .agents appears", () => {
+  const repository = makeRepository();
+  mkdirSync(path.join(repository, ".claude"), { recursive: true });
+  install(repository);
+  mkdirSync(path.join(repository, ".agents"), { recursive: true });
+
+  const result = install(repository);
+
+  assert.equal(result.action, "no-op");
+  assert.equal(result.canonicalPath, ".claude/skills/update-ddduck-specs/SKILL.md");
+  assert.equal(existsSync(path.join(repository, codexAdapterRelativePath)), false);
+});
+
+test("re-materializes a removed host adapter instead of refusing", () => {
+  const repository = makeRepository();
+  mkdirSync(path.join(repository, ".agents"));
+  mkdirSync(path.join(repository, ".claude"));
+  install(repository);
+  rmSync(path.join(repository, claudeRelativePath), { recursive: true, force: true });
+
+  const result = install(repository);
+
+  assert.equal(result.action, "create");
+  assert.equal(lstatSync(path.join(repository, claudeRelativePath)).isSymbolicLink(), true);
+  assert.equal(
+    readFileSync(path.join(repository, claudeCanonicalRelativePath), "utf8"),
+    readFileSync(bundledSkill, "utf8"),
+  );
 });
 
 test("refuses a missing packaged skill asset before mutation", () => {
