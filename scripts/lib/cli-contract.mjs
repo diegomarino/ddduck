@@ -83,7 +83,16 @@ export function renderHelp(command) {
     undefined: [
       "Usage: ddduck <command> [options]",
       "Commands: init, check, generate, query, diff, install, create, move, split, retire.",
+      "Flags: --version (-v) prints the installed ddduck version.",
       "Run `ddduck <command> --help` for command usage.",
+    ],
+    "--version": [
+      "Syntax: ddduck --version [--json]   (alias: ddduck -v)",
+      "Defaults: text output; no product root is resolved and no product is read.",
+      "Writes: nothing.",
+      "Success output: one text line naming the package and its installed version.",
+      "Exit status: 0 on success or help; 1 on invalid input.",
+      "JSON: --json emits one object with name and version.",
     ],
     init: [
       "Syntax: ddduck init [destination] --id model:<product-id> [--json]",

@@ -14,6 +14,25 @@ retry logic never has to string-match standard error; every other failure exits 
 This package is published to npm as `ddduck`; install the CLI globally with `npm install -g ddduck`
 (see [the getting-started guide](getting-started.md#install-ddduck)).
 
+## `--version`
+
+```text
+ddduck --version [--json]
+ddduck -v [--json]
+```
+
+| Option   | Default | Meaning                                        |
+| -------- | ------- | ---------------------------------------------- |
+| `--json` | false   | Emit one JSON object instead of the text line. |
+
+`--version` (alias `-v`) prints the installed package name and version taken from the package's
+own `package.json`, as one text line — `ddduck <version>` — or, with `--json`, one object:
+`{"name":"ddduck","version":"<version>"}`. It resolves no product root and reads no product, so
+it is the cheapest way to confirm that a candidate executable really is ddduck and which version
+is installed. `ddduck --version --help` prints the flag's contract like every other command.
+Exit status: 0 on success or help; 1 on invalid input (an unknown option, for example). The
+retryable busy exit 2 cannot occur, because no product root is touched.
+
 ## Product root resolution
 
 Product-facing commands accept `--root <product-root>`. When `--root` is omitted, ddduck resolves

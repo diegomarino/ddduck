@@ -28,7 +28,41 @@ test("renders top-level help without diagnostics", () => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Usage: ddduck/);
+  assert.match(result.stdout, /--version/, "the command overview must list the version flag");
   assert.equal(result.stderr, "");
+});
+
+test("reports the package version through both version flags", () => {
+  const { name, version } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+
+  for (const flag of ["--version", "-v"]) {
+    const result = runDdd([flag]);
+
+    assert.equal(result.status, 0, `${flag}: ${result.stderr}`);
+    assert.equal(result.stdout, `${name} ${version}\n`);
+    assert.equal(result.stderr, "");
+  }
+});
+
+test("version reports one JSON object with --json", () => {
+  const { name, version } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+
+  for (const flag of ["--version", "-v"]) {
+    const result = runDdd([flag, "--json"]);
+
+    assert.equal(result.status, 0, `${flag}: ${result.stderr}`);
+    assert.deepEqual(JSON.parse(result.stdout), { name, version });
+    assert.equal(result.stderr, "");
+  }
+});
+
+test("version rejects unknown options and points at its own help", () => {
+  const result = runDdd(["--version", "--bogus"]);
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /Unknown option --bogus/);
+  assert.match(result.stderr, /Next: Run ddduck --version --help/);
 });
 
 test("check help documents the source-only freshness escape hatch", () => {
@@ -51,6 +85,8 @@ test("every built-in command help documents its complete operational contract", 
     "move",
     "split",
     "retire",
+    "--version",
+    "-v",
   ]) {
     const result = runDdd([command, "--help"]);
 
