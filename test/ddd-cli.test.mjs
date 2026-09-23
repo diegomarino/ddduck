@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { shellQuote } from "../scripts/lib/context-pack.mjs";
+import { renderSkillsAddCommand } from "../scripts/lib/skill-delegation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "scripts", "ddduck.mjs");
@@ -369,10 +369,8 @@ test("install skill prints the exact delegated command before asking to run it",
   const result = runDddWithInput(["install", "skill"], "n\n", destination);
 
   assert.equal(result.status, 1);
-  assert.match(
-    result.stdout,
-    new RegExp(`^npx --yes skills add ${escapeRegExp(shellQuote(path.join(root, "skills")))} --skill '\\*' -y$`, "m"),
-  );
+  assert.match(result.stdout, new RegExp(`^${escapeRegExp(renderSkillsAddCommand(path.join(root, "skills")))}$`, "m"));
+  assert.match(result.stdout, /--package=skills@/, "the printed command must pin the delegated package");
   assert.match(result.stdout, /\[y\/n\]/);
   assert.match(result.stderr, /Error: install skill declined at the confirmation prompt/);
   assert.match(result.stderr, /Next: .*--yes/);

@@ -138,7 +138,7 @@ export function renderHelp(command) {
     install: [
       "Syntax: ddduck install skill [--repo <repository-root>] [--yes]",
       "Defaults: --repo is the current directory; the confirmation prompt is asked unless --yes is passed.",
-      "Writes: nothing directly; it runs `npx --yes skills add <ddduck>/skills --skill '*' -y` in --repo, and the skills CLI installs every bundled skill into that project (canonical copy plus per-agent symlinks) and owns its own state.",
+      "Writes: nothing directly; it runs `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck>/skills --skill '*' -y` in --repo, and the skills CLI installs every bundled skill into that project (canonical copy plus per-agent symlinks) and owns its own state.",
       "Success output: the exact delegated command on its own line, the confirmation prompt, then the streamed output of the delegated command.",
       "Exit status: 0 on a successful delegated install or help; 1 when the confirmation is declined (nothing installed), when input is invalid, or when npx cannot be started; otherwise the exit status of the delegated command.",
       "JSON: unavailable; --json is not accepted.",

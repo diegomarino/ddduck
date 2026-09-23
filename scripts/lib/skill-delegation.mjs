@@ -14,15 +14,36 @@ import { shellQuote } from "./context-pack.mjs";
 
 const defaultOperations = { spawnSync, readAnswer };
 
+/** The delegated CLI, pinned so npx resolves it from the registry. */
+export const skillsPackageSpecifier = "skills@^1.7.0";
+
 /**
  * Build the delegated command: every bundled skill, project scope, and no
  * second confirmation inside the child (ddduck already confirmed the printed
  * command). `npx --yes` keeps an uncached `skills` from prompting to install.
+ * `--package=` is load-bearing: a bare command name resolves against the
+ * target repository's node_modules/.bin first, so an unrelated `skills` binary
+ * hoisted there (a generic name in a monorepo) would run instead of the CLI
+ * the printed command names. The `--` separator keeps npx from reading the
+ * command word as another package specifier.
  * @param {string} skillsDirectory - Absolute path of the bundled skills directory.
  * @returns {{command: string, args: string[]}} The command and its argument vector.
  */
 export function buildSkillsAddCommand(skillsDirectory) {
-  return { command: "npx", args: ["--yes", "skills", "add", skillsDirectory, "--skill", "*", "-y"] };
+  return {
+    command: "npx",
+    args: [
+      "--yes",
+      `--package=${skillsPackageSpecifier}`,
+      "--",
+      "skills",
+      "add",
+      skillsDirectory,
+      "--skill",
+      "*",
+      "-y",
+    ],
+  };
 }
 
 /**

@@ -314,7 +314,7 @@ installed layout and its own state. The command prints the exact command it will
 line, and then runs it in `--repo`:
 
 ```text
-npx --yes skills add <ddduck-package>/skills --skill '*' -y
+npx --yes '--package=skills@^1.7.0' -- skills add <ddduck-package>/skills --skill '*' -y
 ```
 
 The bundled skills directory is resolved inside the installed ddduck package
@@ -324,6 +324,12 @@ the absent `-g` keeps the install project-scoped, and `-y` answers the delegated
 prompts, because the command it applies has already been shown and confirmed here. `skills`
 writes one canonical copy (by default `.agents/skills/<skill-name>/`) and symlinks it into the
 agent directories that exist in the project.
+
+`--package=` pins the delegated package so npx resolves it from the registry. Without it, npx
+resolves the bare name `skills` against `--repo`'s own `node_modules/.bin` first, so an unrelated
+binary under that generic name — a sibling package hoisted to a monorepo root, for example —
+would run instead of the CLI the printed command names. The `--` separator keeps npx from
+reading the command word as a second package specifier.
 
 Before running it, ddduck asks `[y/n]` on standard input. Only `y` or `Y` proceeds; any other
 answer — including an empty line and a closed standard input — aborts, installs nothing, and

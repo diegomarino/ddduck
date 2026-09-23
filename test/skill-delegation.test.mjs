@@ -6,11 +6,25 @@ import {
   renderSkillsAddCommand,
 } from "../scripts/lib/skill-delegation.mjs";
 
-test("the delegated command installs every bundled skill into the project without prompting again", () => {
+test("the delegated argv is pinned exactly: every bundled skill, project scope, registry resolution", () => {
   const { command, args } = buildSkillsAddCommand("/packages/ddduck/skills");
 
   assert.equal(command, "npx");
-  assert.deepEqual(args, ["--yes", "skills", "add", "/packages/ddduck/skills", "--skill", "*", "-y"]);
+  // Pinned verbatim. --package= forces registry resolution: without it npx
+  // runs the target repository's node_modules/.bin/skills, a generic name
+  // an unrelated dependency can hoist there. -- keeps npx from reading the
+  // command word as a second package specifier.
+  assert.deepEqual(args, [
+    "--yes",
+    "--package=skills@^1.7.0",
+    "--",
+    "skills",
+    "add",
+    "/packages/ddduck/skills",
+    "--skill",
+    "*",
+    "-y",
+  ]);
   assert.ok(!args.includes("-g"), "the delegated install must stay project-scoped");
   assert.ok(!args.includes("--copy"), "the delegated install must keep the canonical-copy-plus-symlink topology");
 });
@@ -20,9 +34,13 @@ test("the printed command is the executed command, shell-quoted for copy-paste",
 
   assert.equal(
     renderSkillsAddCommand("/with space/skills"),
-    `npx --yes skills add '/with space/skills' --skill '*' -y`,
+    `npx --yes '--package=skills@^1.7.0' -- skills add '/with space/skills' --skill '*' -y`,
   );
-  assert.equal(args[3], "/with space/skills", "the executed path must stay unquoted; only the printout is quoted");
+  assert.equal(
+    args[args.indexOf("add") + 1],
+    "/with space/skills",
+    "the executed path must stay unquoted; only the printout is quoted",
+  );
 });
 
 test("confirmation runs the printed command in the repository and reports success", () => {
@@ -47,7 +65,8 @@ test("confirmation runs the printed command in the repository and reports succes
   assert.deepEqual(calls[0].args, buildSkillsAddCommand("/packages/ddduck/skills").args);
   assert.equal(calls[0].options.cwd, "/repo");
   assert.equal(calls[0].options.stdio, "inherit");
-  assert.match(stdout.text, /npx --yes skills add \/packages\/ddduck\/skills --skill '\*' -y\n/);
+  // What the prompt shows must be what the child runs, --package included.
+  assert.match(stdout.text, new RegExp(`^${escapeRegExp(renderSkillsAddCommand("/packages/ddduck/skills"))}$`, "m"));
   assert.match(stdout.text, /\[y\/n\]/);
 });
 
@@ -90,7 +109,7 @@ test("any answer other than y aborts with no side effects and a next action nami
       },
       `answer ${JSON.stringify(answer)} must abort`,
     );
-    assert.match(stdout.text, /npx --yes skills add/, "the command must be printed before the prompt");
+    assert.ok(stdout.text.includes(renderSkillsAddCommand("/skills")), "the command must be printed before the prompt");
   }
 });
 
@@ -113,7 +132,7 @@ test("--yes skips the confirmation so the command stays usable in CI and by agen
 
   assert.deepEqual(result, { status: 0 });
   assert.equal(spawned, 1);
-  assert.match(stdout.text, /npx --yes skills add/, "--yes still prints the command it runs");
+  assert.ok(stdout.text.includes(renderSkillsAddCommand("/skills")), "--yes still prints the command it runs");
   assert.ok(!stdout.text.includes("[y/n]"));
 });
 
@@ -148,6 +167,10 @@ test("a delegated command that never starts names npx instead of reporting succe
     },
   );
 });
+
+function escapeRegExp(value) {
+  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function captureStream() {
   return {

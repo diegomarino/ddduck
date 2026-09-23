@@ -95,7 +95,8 @@ ddduck install skill --repo <repository-root>
 ```
 
 `--repo` defaults to the current directory. ddduck installs nothing itself: it prints the exact
-`npx skills add <ddduck-package>/skills --skill '*'` command it will run, asks `[y/n]`, and
+`npx --yes '--package=skills@^1.7.0' -- skills add <ddduck-package>/skills --skill '*' -y`
+command it will run, asks `[y/n]`, and
 delegates the installation to the [`skills`](https://www.npmjs.com/package/skills) CLI, which
 supports 79 agent hosts. Pass `--yes` to skip the confirmation in CI or when an agent runs the
 command. See [the CLI reference](docs/cli.md#install-an-agent-skill) for the delegated flags,
