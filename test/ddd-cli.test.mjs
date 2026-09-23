@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
+import { renderSkillsAddCommand } from "../scripts/lib/skill-delegation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(root, "scripts", "ddduck.mjs");
@@ -363,44 +364,42 @@ test("init sweeps same-destination staging only when its creating process is dea
   }
 });
 
-test("install skill defaults --repo to the current directory", () => {
+test("install skill prints the exact delegated command before asking to run it", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-"));
-  const result = spawnSync(process.execPath, [cli, "install", "skill", "update-ddduck-specs"], {
-    cwd: destination,
-    encoding: "utf8",
-  });
+  const result = runDddWithInput(["install", "skill"], "n\n", destination);
 
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(
-    result.stdout,
-    `install skill update-ddduck-specs (created) in ${realpathSync(destination)}; canonical: .agents/skills/update-ddduck-specs/SKILL.md; lock: .ddduck/agent-skills.lock.json\n`,
-  );
-  assert.ok(existsSync(path.join(destination, ".agents", "skills", "update-ddduck-specs", "SKILL.md")));
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, new RegExp(`^${escapeRegExp(renderSkillsAddCommand(path.join(root, "skills")))}$`, "m"));
+  assert.match(result.stdout, /--package=skills@/, "the printed command must pin the delegated package");
+  assert.match(result.stdout, /\[y\/n\]/);
+  assert.match(result.stderr, /Error: install skill declined at the confirmation prompt/);
+  assert.match(result.stderr, /Next: .*--yes/);
+  assert.equal(existsSync(path.join(destination, ".agents")), false, "a declined install must touch nothing");
+  assert.equal(existsSync(path.join(destination, ".claude")), false, "a declined install must touch nothing");
 });
 
-test("install skill reports created and no-op runs distinguishably", () => {
-  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-result-"));
-  const created = runDdd(["install", "skill", "update-ddduck-specs", "--repo", destination]);
+test("install skill declines on a closed standard input instead of installing unattended", () => {
+  const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-eof-"));
+  const result = runDddWithInput(["install", "skill", "--repo", destination], "");
 
-  assert.equal(created.status, 0, created.stderr);
-  assert.match(created.stdout, /^install skill update-ddduck-specs \(created\) in /);
-  assert.match(
-    created.stdout,
-    /; canonical: \.agents\/skills\/update-ddduck-specs\/SKILL\.md; lock: \.ddduck\/agent-skills\.lock\.json\n$/,
-  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Error: install skill declined at the confirmation prompt/);
+  assert.equal(readdirSync(destination).length, 0);
+});
 
-  const repeated = runDdd(["install", "skill", "update-ddduck-specs", "--repo", destination]);
+test("install skill rejects the removed skill-name positional with the current syntax", () => {
+  const result = runDddWithInput(["install", "skill", "update-ddduck-specs"], "");
 
-  assert.equal(repeated.status, 0, repeated.stderr);
-  assert.match(repeated.stdout, /^install skill update-ddduck-specs \(no-op\) in /);
-  assert.equal(repeated.stdout.trim().split("\n").length, 1);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Expected 1 positional argument/);
+  assert.match(result.stderr, /ddduck install skill \[--repo <repository-root>\] \[--yes\]/);
 });
 
 test("install skill rejects a nonexistent --repo without creating anything", () => {
   const parent = mkdtempSync(path.join(tmpdir(), "ddduck-install-missing-repo-"));
   const missingRepo = path.join(parent, "no-such-repo-typo");
 
-  const result = runDdd(["install", "skill", "update-ddduck-specs", "--repo", missingRepo]);
+  const result = runDddWithInput(["install", "skill", "--repo", missingRepo, "--yes"], "");
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Error: install requires an existing repository directory/);
@@ -409,18 +408,18 @@ test("install skill rejects a nonexistent --repo without creating anything", () 
 
   const filePath = path.join(parent, "a-file");
   writeFileSync(filePath, "not a directory\n");
-  const fileResult = runDdd(["install", "skill", "update-ddduck-specs", "--repo", filePath]);
+  const fileResult = runDddWithInput(["install", "skill", "--repo", filePath, "--yes"], "");
   assert.notEqual(fileResult.status, 0);
   assert.match(fileResult.stderr, /install requires an existing repository directory/);
 });
 
 test("install skill rejects unsupported mutation and host options", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-install-cli-options-"));
-  const result = runDdd(["install", "skill", "update-ddduck-specs", "--force", "yes", "--repo", destination]);
+  const result = runDddWithInput(["install", "skill", "--force", "yes", "--repo", destination], "");
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unknown option --force/);
-  assert.equal(existsSync(path.join(destination, ".agents", "skills", "update-ddduck-specs", "SKILL.md")), false);
+  assert.equal(readdirSync(destination).length, 0);
 });
 
 test("init reports canonical and generated paths in text and JSON", () => {
@@ -1688,6 +1687,12 @@ function escapeRegExp(value) {
 
 function runDdd(args, cwd = root) {
   return spawnSync(process.execPath, [cli, ...args], { cwd, encoding: "utf8" });
+}
+
+// `install skill` reads its confirmation from standard input; supplying it
+// explicitly keeps the prompt off the test runner's own stdin.
+function runDddWithInput(args, input, cwd = root) {
+  return spawnSync(process.execPath, [cli, ...args], { cwd, encoding: "utf8", input });
 }
 
 function runDddAsync(args) {

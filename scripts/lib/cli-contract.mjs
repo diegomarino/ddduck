@@ -136,11 +136,11 @@ export function renderHelp(command) {
       "JSON: --json emits one ModelDiff document; comparison is canonical YAML only and requires human interpretation.",
     ],
     install: [
-      "Syntax: ddduck install skill update-ddduck-specs [--repo <repository-root>]",
-      "Defaults: --repo is the current directory.",
-      "Writes: the selected host skill bundle and .ddduck/agent-skills.lock.json in --repo.",
-      "Success output: one text result with the action (created, upgraded, or no-op), repository, canonical path, and lock path.",
-      "Exit status: 0 on installation, no-op, or help; nonzero on invalid input or conflicting host state.",
+      "Syntax: ddduck install skill [--repo <repository-root>] [--yes]",
+      "Defaults: --repo is the current directory; the confirmation prompt is asked unless --yes is passed.",
+      "Writes: nothing directly; it runs `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck>/skills --skill '*' -y` in --repo, and the skills CLI installs every bundled skill into that project (canonical copy plus per-agent symlinks) and owns its own state.",
+      "Success output: the exact delegated command on its own line, the confirmation prompt, then the streamed output of the delegated command.",
+      "Exit status: 0 on a successful delegated install or help; 1 when the confirmation is declined (nothing installed), when input is invalid, or when npx cannot be started; otherwise the exit status of the delegated command.",
       "JSON: unavailable; --json is not accepted.",
     ],
     create: [

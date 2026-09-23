@@ -41,7 +41,7 @@ import {
 import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveInitDestination, resolveProductRoot } from "./lib/product-root-resolver.mjs";
 import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
-import { installSkill } from "./lib/skill-installer.mjs";
+import { delegateSkillInstall } from "./lib/skill-delegation.mjs";
 import { runQuery } from "./query-model.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
 import { buildAuthoringPlan } from "./lib/product-authoring.mjs";
@@ -156,39 +156,36 @@ function readPackageManifest() {
 }
 
 /**
- * Implement `ddduck install skill update-ddduck-specs`: install the bundled
- * host skill bundle and .ddduck/agent-skills.lock.json into --repo.
+ * Implement `ddduck install skill`: print the `npx skills add` command for the
+ * bundled skills directory, confirm it unless --yes was passed, run it in
+ * --repo, and propagate its exit status. ddduck installs nothing itself.
  * @param {string[]} args - Arguments after the `install` command word.
  * @returns {void}
  */
 function install(args) {
   const { positionals, options } = parseCommandArgs(args, {
-    positionals: { min: 2, max: 2 },
-    options: { repo: { value: true } },
+    positionals: { min: 1, max: 1, syntax: "ddduck install skill [--repo <repository-root>] [--yes]" },
+    options: { repo: { value: true }, yes: { value: false } },
   });
-  const [kind, skillName] = positionals;
-  if (kind !== "skill" || skillName !== "update-ddduck-specs") {
-    throw new CliUsageError("install requires skill update-ddduck-specs");
+  if (positionals[0] !== "skill") {
+    throw new CliUsageError(`install requires the subject skill, not ${JSON.stringify(positionals[0])}`);
   }
-  const packageVersion = readPackageManifest().version;
   const repository = path.resolve(options.repo ?? process.cwd());
-  // A typo'd --repo must fail instead of silently manufacturing a directory
-  // tree (and a lock) at the wrong path while the real repository gets nothing.
+  // A typo'd --repo must fail instead of installing into the wrong directory
+  // (npx would happily create it) while the real repository gets nothing.
   if (!existsSync(repository) || !statSync(repository).isDirectory()) {
     throw new CliUsageError(`install requires an existing repository directory: ${repository}`, {
       nextAction: "Pass --repo <existing-repository-root> and retry.",
     });
   }
-  const result = installSkill({
-    repository,
-    skillName,
-    skillPath: path.join(frameworkRoot, "skills", skillName, "SKILL.md"),
-    packageVersion,
-  });
-  const actionLabels = { create: "created", upgrade: "upgraded", "no-op": "no-op" };
-  process.stdout.write(
-    `install skill ${skillName} (${actionLabels[result.action]}) in ${repository}; canonical: ${result.canonicalPath}; lock: ${result.lockPath}\n`,
-  );
+  const skillsDirectory = path.join(frameworkRoot, "skills");
+  if (!existsSync(skillsDirectory) || !statSync(skillsDirectory).isDirectory()) {
+    const error = new Error(`Missing bundled skills directory: ${skillsDirectory}`);
+    error.nextAction = "Reinstall ddduck so the packaged skills are present, then retry.";
+    throw error;
+  }
+  const { status } = delegateSkillInstall({ skillsDirectory, repository, assumeYes: options.yes });
+  if (status !== 0) process.exitCode = status;
 }
 
 /**
