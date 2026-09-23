@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.2.0...ddduck-v0.3.0) (2026-09-23)
+
+
+### Features
+
+* add --version and -v to the ddduck CLI ([#16](https://github.com/diegomarino/ddduck/issues/16)) ([8681e60](https://github.com/diegomarino/ddduck/commit/8681e604ecd7bcad14153820d392db5b2c1a3ba9))
+* delegate install skill to the skills CLI ([#15](https://github.com/diegomarino/ddduck/issues/15)) ([5a2069f](https://github.com/diegomarino/ddduck/commit/5a2069fe68e6aff2c431648e1bdba5fee44e0280)), closes [#12](https://github.com/diegomarino/ddduck/issues/12)
+
+
+### Bug Fixes
+
+* **skills:** give update-ddduck-specs an executable probe order ([#18](https://github.com/diegomarino/ddduck/issues/18)) ([09dbacc](https://github.com/diegomarino/ddduck/commit/09dbacc0ad85fb5ed0d1c341cc5058edbe77cd24))
+
 ## [0.2.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.1.2...ddduck-v0.2.0) (2026-09-22)
 
 
