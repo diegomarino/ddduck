@@ -1,6 +1,6 @@
 # Reviewing changes
 
-Read this reference when two product roots or revisions must be compared, or when a move, removal, or affected-context review is requested.
+Read this reference when two product roots or revisions must be compared, or when a move, removal, or affected-context review is requested. Every `ddduck …` command below names the command resolved by [executable resolution](executable-resolution.md); substitute it before running.
 
 ## Structural comparison
 

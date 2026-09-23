@@ -4,7 +4,7 @@ Read this reference before running any ddduck command. Root classification, base
 
 ## Probe in order
 
-Take the first candidate that runs. Confirm a candidate with `ddduck --version`, which prints `ddduck <version>`, and read the resolved version from that output.
+Take the first candidate that runs. Confirm a candidate by appending `--version` to that candidate's own command, never by running a different one: `node_modules/.bin/ddduck --version` for probe 2, `node scripts/ddduck.mjs --version` for probe 3, and the bare `ddduck --version` only when `ddduck` on `PATH` is itself the candidate being probed. A working repository-local candidate must not be rejected because `ddduck` is absent from `PATH`. The command prints `ddduck <version>`; read the resolved version from that output.
 
 1. A command or path supplied in the current request.
 2. `node_modules/.bin/ddduck` at the repository root, then at any enclosing workspace root.
@@ -15,6 +15,8 @@ Take the first candidate that runs. Confirm a candidate with `ddduck --version`,
 Do not install dependencies and do not substitute an unrelated global version. A candidate that fails to run, or that reports a version incompatible with the pinned one, is not a resolution; continue with the next probe.
 
 Record which probe resolved, the exact command, and its reported version. Reuse that one command for every subsequent ddduck invocation.
+
+Every `ddduck <subcommand>` form written in this skill and its references names the resolved command, not the literal `ddduck` on `PATH`. Substitute the resolved command before running any of them: with probe 3 resolved, `ddduck check --root <root>` is run as `node scripts/ddduck.mjs check --root <root>`.
 
 ## Named paths only, never scan
 

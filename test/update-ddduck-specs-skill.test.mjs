@@ -15,6 +15,7 @@ const references = {
 };
 const modeling = readFileSync(references.modeling, "utf8");
 const authoring = readFileSync(references.authoring, "utf8");
+const reviewing = readFileSync(references.reviewing, "utf8");
 const executable = readFileSync(references.executable, "utf8");
 
 test("update-ddduck-specs has the canonical frontmatter", () => {
@@ -71,12 +72,48 @@ test("update-ddduck-specs gives an ordered executable probe instead of a bare pr
   );
   for (const instruction of [
     "Take the first candidate that runs.",
-    "Confirm a candidate with `ddduck --version`, which prints `ddduck <version>`",
+    "The command prints `ddduck <version>`; read the resolved version from that output.",
     "Do not install dependencies and do not substitute an unrelated global version.",
   ]) {
     assert.ok(executable.includes(instruction), `missing probe instruction: ${instruction}`);
   }
   assert.doesNotMatch(executable, /no `--version`|`--version` does not exist|There is no `--version` flag/);
+});
+
+test("update-ddduck-specs confirms each candidate with its own command, not the PATH command", () => {
+  for (const instruction of [
+    "Confirm a candidate by appending `--version` to that candidate's own command, never by running a different one",
+    "`node_modules/.bin/ddduck --version` for probe 2",
+    "`node scripts/ddduck.mjs --version` for probe 3",
+    "the bare `ddduck --version` only when `ddduck` on `PATH` is itself the candidate being probed",
+    "A working repository-local candidate must not be rejected because `ddduck` is absent from `PATH`.",
+  ]) {
+    assert.ok(executable.includes(instruction), `missing candidate-probe instruction: ${instruction}`);
+  }
+  assert.doesNotMatch(executable, /Confirm a candidate with `ddduck --version`/);
+});
+
+test("update-ddduck-specs names every ddduck command as the resolved candidate", () => {
+  assert.ok(
+    executable.includes(
+      "Every `ddduck <subcommand>` form written in this skill and its references names the resolved command, not the literal `ddduck` on `PATH`.",
+    ),
+  );
+  assert.ok(
+    executable.includes(
+      "with probe 3 resolved, `ddduck check --root <root>` is run as `node scripts/ddduck.mjs check --root <root>`",
+    ),
+  );
+  assert.ok(
+    authoring.includes(
+      "Every `ddduck …` command in this file names that resolved command; substitute it before running.",
+    ),
+  );
+  assert.ok(
+    reviewing.includes(
+      "Every `ddduck …` command below names the command resolved by [executable resolution](executable-resolution.md); substitute it before running.",
+    ),
+  );
 });
 
 test("update-ddduck-specs forbids unbounded executable searches", () => {

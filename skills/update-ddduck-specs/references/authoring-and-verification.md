@@ -4,7 +4,7 @@ Read this reference before proposing or applying canonical ddduck changes.
 
 ## Resolve and classify once
 
-Root resolution is delegated to the executable, so resolve one first with the probe order in [executable resolution](executable-resolution.md). Then use an explicitly requested root. Otherwise let ddduck resolve the enclosing product root, then `.ddduck/config.json`, then the unique repository candidate. `ddduck query spec --root <root> --json` reports the resolved root. Ambiguity is a stop condition: report candidates and ask rather than initializing a second model.
+Root resolution is delegated to the executable, so resolve one first with the probe order in [executable resolution](executable-resolution.md). Every `ddduck …` command in this file names that resolved command; substitute it before running. Then use an explicitly requested root. Otherwise let ddduck resolve the enclosing product root, then `.ddduck/config.json`, then the unique repository candidate. `ddduck query spec --root <root> --json` reports the resolved root. Ambiguity is a stop condition: report candidates and ask rather than initializing a second model.
 
 Classify the selected path. These three states are observations; each requires an inspection that actually ran.
 
