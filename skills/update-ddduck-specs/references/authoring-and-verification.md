@@ -4,15 +4,17 @@ Read this reference before proposing or applying canonical ddduck changes.
 
 ## Resolve and classify once
 
-Use an explicitly requested root. Otherwise let ddduck resolve the enclosing product root, then `.ddduck/config.json`, then the unique repository candidate. `ddduck query spec --root <root> --json` reports the resolved root. Ambiguity is a stop condition: report candidates and ask rather than initializing a second model.
+Root resolution is delegated to the executable, so resolve one first with the probe order in [executable resolution](executable-resolution.md). Then use an explicitly requested root. Otherwise let ddduck resolve the enclosing product root, then `.ddduck/config.json`, then the unique repository candidate. `ddduck query spec --root <root> --json` reports the resolved root. Ambiguity is a stop condition: report candidates and ask rather than initializing a second model.
 
-Classify the selected path:
+Classify the selected path. These three states are observations; each requires an inspection that actually ran.
 
 - `existing`: `product.yaml` exists. Run `query spec` and `check` independently. A failing model remains existing and invalid.
 - `absent`: the root is missing or empty. Inspect the repository before proposing initialization.
 - `path-collision`: the path is non-empty but is not a recognizable product. Report it and do not initialize over it.
 
-Stop before mutation when the executable is missing or incompatible, the root is ambiguous, the path collides, bootstrap identity or seams are ungrounded, evidence conflicts change the proposal materially, target files overlap inseparable user work, or the analyzed working tree changed.
+When no executable resolves, or the inspection that distinguishes those states did not complete, the state is `undetermined`: the absence of an observation rather than a fourth thing observed. Report `undetermined` and stop; never downgrade it to `absent`, because `absent` is the only state that authorizes initialization.
+
+Stop before mutation when the executable is unresolved, missing, or incompatible, the model state is `undetermined`, the root is ambiguous, the path collides, bootstrap identity or seams are ungrounded, evidence conflicts change the proposal materially, target files overlap inseparable user work, or the analyzed working tree changed.
 
 ## Plan-only report
 

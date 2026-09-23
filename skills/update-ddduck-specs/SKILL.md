@@ -10,7 +10,7 @@ Maintain or bootstrap a ddduck product model from evidence in the current workin
 ## Operating contract
 
 - Resolve the repository root, read every applicable instruction file, and inspect Git status before analysis.
-- Use the repository-compatible ddduck executable. Do not install dependencies or substitute an unrelated global version.
+- Resolve a repository-compatible ddduck executable with the probe order in [executable resolution](references/executable-resolution.md). Do not install dependencies or substitute an unrelated global version.
 - Default to plan-only. Mutate model files only when the current request explicitly authorizes applying the evidence-backed proposal.
 - Preserve unrelated work. Stop when intended model edits overlap user changes inseparably or the analyzed tree changes before application.
 - Write only `<root>/product.yaml`, `<root>/model/**`, `<root>/decisions/**`, and regenerated `<root>/generated/**`. Regenerate derived views; never edit them directly.
@@ -22,13 +22,14 @@ Maintain or bootstrap a ddduck product model from evidence in the current workin
 
 Read each selected reference completely before acting. All references are one level below this file.
 
+- Before the first ddduck command, read [executable resolution](references/executable-resolution.md).
 - For every bootstrap, audit, or reconciliation, read [modeling and evidence](references/modeling-and-evidence.md).
 - When comparing revisions, reviewing moves/removals, or selecting affected context, read [reviewing changes](references/reviewing-changes.md). Start with `ddduck diff --base <before-root> --root <after-root> --json` when two valid roots exist.
 - Before proposing or applying canonical changes, read [authoring and verification](references/authoring-and-verification.md). Use `ddduck create domain`, `ddduck create concept`, and `ddduck create use-case` for the kinds they support.
 
 ## Workflow
 
-1. Resolve and classify the product root. Record `query spec` and `check` independently; an invalid existing model is not an absent model.
+1. Resolve the executable, then resolve and classify the product root. Record `query spec` and `check` independently; an invalid existing model is not an absent model, and a root that was never inspected is `undetermined`, never absent.
 2. Gather current code, tests, interfaces, documentation, configuration, schemas, and accepted decisions. Record contradictions, exclusions, and coverage gaps.
 3. Separate observed behavior, accepted intent, open questions, and rejected alternatives. Classify every material model difference using the modeling reference.
 4. Produce the plan-only report defined in the authoring reference. A partial or zero-model-change result is valid when it is the evidence-backed outcome.
