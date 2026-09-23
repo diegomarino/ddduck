@@ -305,28 +305,31 @@ The command does not recursively expand the perimeter.
 ## Install an agent skill
 
 ```text
-ddduck install skill update-ddduck-specs [--repo <repository-root>]
+ddduck install skill [--repo <repository-root>] [--yes]
 ```
 
-`--repo` defaults to the current directory. The installer chooses the least intrusive host
-topology from the repository's existing directories:
+`--repo` defaults to the current directory. ddduck installs nothing itself: it delegates to the
+[`skills`](https://www.npmjs.com/package/skills) CLI, which supports 79 agent hosts and owns the
+installed layout and its own state. The command prints the exact command it will run, on its own
+line, and then runs it in `--repo`:
 
 ```text
-no .agents/ or .claude/   -> .agents/skills/update-ddduck-specs/SKILL.md
-.agents/ only             -> .agents/skills/update-ddduck-specs/SKILL.md
-.claude/ only             -> .claude/skills/update-ddduck-specs/SKILL.md
-.agents/ and .claude/     -> .agents/skills/update-ddduck-specs/SKILL.md
-                             .claude/skills/update-ddduck-specs -> ../../.agents/skills/update-ddduck-specs
+npx --yes skills add <ddduck-package>/skills --skill '*' -y
 ```
 
-The installer writes `.ddduck/agent-skills.lock.json` with the selected canonical path, host
-adapters, package version, installed file manifest, `SKILL.md` SHA-256, and whole-bundle SHA-256.
-It installs `SKILL.md` and its bundled `references/` directory, refuses locally modified managed
-files, and upgrades legacy single-file locks without overwriting extra local files. It does not
-create a host directory for a host that is absent from the repository, except for the `.agents/`
-fallback when no host directory exists. On success it prints one result line naming the action
-(`created`, `upgraded`, or `no-op`), the repository, the canonical skill path, and the lock path. It does not accept
-`--json`.
+The bundled skills directory is resolved inside the installed ddduck package
+(`./node_modules/ddduck/skills` from a consumer repository, or the repository's own `skills/`
+when the repository under analysis is ddduck itself). `--skill '*'` installs every bundled skill,
+the absent `-g` keeps the install project-scoped, and `-y` answers the delegated CLI's own
+prompts, because the command it applies has already been shown and confirmed here. `skills`
+writes one canonical copy (by default `.agents/skills/<skill-name>/`) and symlinks it into the
+agent directories that exist in the project.
+
+Before running it, ddduck asks `[y/n]` on standard input. Only `y` or `Y` proceeds; any other
+answer — including an empty line and a closed standard input — aborts, installs nothing, and
+exits 1. `--yes` skips that confirmation and keeps the command usable in CI and by agents; the
+command is still printed. The delegated command's output streams through unchanged and its exit
+status is propagated. `--json` is not accepted.
 
 Invoke the skill from the relevant host:
 

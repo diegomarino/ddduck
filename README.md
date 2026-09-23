@@ -91,11 +91,15 @@ safety net.
 Install the evidence-backed model maintenance skill in a consumer repository:
 
 ```bash
-ddduck install skill update-ddduck-specs --repo <repository-root>
+ddduck install skill --repo <repository-root>
 ```
 
-`--repo` defaults to the current directory. See [the CLI reference](docs/cli.md#install-an-agent-skill)
-for the installed layout, host invocation, and plan-only behavior.
+`--repo` defaults to the current directory. ddduck installs nothing itself: it prints the exact
+`npx skills add <ddduck-package>/skills --skill '*'` command it will run, asks `[y/n]`, and
+delegates the installation to the [`skills`](https://www.npmjs.com/package/skills) CLI, which
+supports 79 agent hosts. Pass `--yes` to skip the confirmation in CI or when an agent runs the
+command. See [the CLI reference](docs/cli.md#install-an-agent-skill) for the delegated flags,
+exit statuses, host invocation, and plan-only behavior.
 
 ## Product queries
 
