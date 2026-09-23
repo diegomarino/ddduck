@@ -2,8 +2,8 @@
 
 /**
  * Entry point for the `ddduck` CLI (the package bin). Dispatches the commands
- * init, check, generate, query, install, and the guarantee lifecycle commands
- * create/move/split/retire. Mutations run through the locked, staged operation
+ * init, check, generate, query, install, --version, and the guarantee lifecycle
+ * commands create/move/split/retire. Mutations run through the locked, staged operation
  * runner in lib/product-operation.mjs; init publishes a fresh product root via
  * PID-stamped staging; check delegates to check-model.mjs plus the generated
  * freshness gates. Errors leave through writeCliError with a Next: action line.
@@ -50,6 +50,20 @@ import { compareProductRoots, renderProductDiff } from "./lib/product-diff.mjs";
 
 const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const topLevelCommands = [
+  "init",
+  "check",
+  "generate",
+  "query",
+  "diff",
+  "install",
+  "create",
+  "move",
+  "split",
+  "retire",
+  "--version",
+];
+
 const cliArgs = process.argv.slice(2);
 
 try {
@@ -68,15 +82,19 @@ function run(args) {
     process.stdout.write(renderHelp());
     return;
   }
-  const [command, ...commandArgs] = args;
-  if (
-    !command ||
-    !["init", "check", "generate", "query", "diff", "install", "create", "move", "split", "retire"].includes(command)
-  ) {
+  const [rawCommand, ...commandArgs] = args;
+  // -v is the only short alias in the contract; normalizing it here keeps the
+  // help lookup, the dispatch, and the error next action on one command name.
+  const command = rawCommand === "-v" ? "--version" : rawCommand;
+  if (!command || !topLevelCommands.includes(command)) {
     throw new CliUsageError(`Unknown command ${command ?? "(missing)"}`);
   }
   if (commandArgs.includes("--help")) {
     process.stdout.write(renderHelp(command));
+    return;
+  }
+  if (command === "--version") {
+    reportVersion(commandArgs);
     return;
   }
   if (command === "init") {
@@ -121,6 +139,23 @@ function run(args) {
 }
 
 /**
+ * Implement `ddduck --version` (alias `-v`): print the installed package name
+ * and version from the package's own manifest. It reads no product, so it also
+ * serves as the probe that confirms a candidate executable really is ddduck.
+ * @param {string[]} args - Arguments after the version flag.
+ * @returns {void}
+ */
+function reportVersion(args) {
+  const { options } = parseCommandArgs(args, { options: { json: { value: false } } });
+  const { name, version } = readPackageManifest();
+  process.stdout.write(options.json ? `${JSON.stringify({ name, version })}\n` : `${name} ${version}\n`);
+}
+
+function readPackageManifest() {
+  return JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8"));
+}
+
+/**
  * Implement `ddduck install skill update-ddduck-specs`: install the bundled
  * host skill bundle and .ddduck/agent-skills.lock.json into --repo.
  * @param {string[]} args - Arguments after the `install` command word.
@@ -135,7 +170,7 @@ function install(args) {
   if (kind !== "skill" || skillName !== "update-ddduck-specs") {
     throw new CliUsageError("install requires skill update-ddduck-specs");
   }
-  const packageVersion = JSON.parse(readFileSync(path.join(frameworkRoot, "package.json"), "utf8")).version;
+  const packageVersion = readPackageManifest().version;
   const repository = path.resolve(options.repo ?? process.cwd());
   // A typo'd --repo must fail instead of silently manufacturing a directory
   // tree (and a lock) at the wrong path while the real repository gets nothing.
@@ -728,8 +763,8 @@ function writeConfigIfAbsent(destination) {
 }
 
 function nextActionFor(args) {
-  const command = args[0];
-  if (["init", "check", "generate", "query", "install", "create", "move", "split", "retire"].includes(command)) {
+  const command = args[0] === "-v" ? "--version" : args[0];
+  if (topLevelCommands.includes(command)) {
     return `Run ddduck ${command} --help, correct the input, and retry.`;
   }
   return "Run ddduck --help, choose a command, and retry.";
