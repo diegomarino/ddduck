@@ -68,7 +68,7 @@ test("update-ddduck-specs gives an ordered executable probe instead of a bare pr
   );
   assert.match(
     executable,
-    /1\. A command or path supplied in the current request\.\n2\. `node_modules\/\.bin\/ddduck` at the repository root, then at any enclosing workspace root\.\n3\. `node scripts\/ddduck\.mjs`[\s\S]*?when the repository under analysis is ddduck itself\.\n4\. `ddduck` on `PATH`\.\n5\. A ddduck source checkout[\s\S]*?`ddduckVersion` in `\.ddduck\/agent-skills\.lock\.json`\./,
+    /1\. A command or path supplied in the current request\.\n2\. `node_modules\/\.bin\/ddduck` at the repository root, then at any enclosing workspace root\.\n3\. `node scripts\/ddduck\.mjs`[\s\S]*?when the repository under analysis is ddduck itself\.\n4\. `ddduck` on `PATH`\.\n5\. A ddduck source checkout that the user named\.[\s\S]*?When `package\.json` pins a `ddduck` dependency, the reported version must match that pin\./,
   );
   for (const instruction of [
     "Take the first candidate that runs.",
@@ -78,6 +78,7 @@ test("update-ddduck-specs gives an ordered executable probe instead of a bare pr
     assert.ok(executable.includes(instruction), `missing probe instruction: ${instruction}`);
   }
   assert.doesNotMatch(executable, /no `--version`|`--version` does not exist|There is no `--version` flag/);
+  assert.doesNotMatch(executable, /agent-skills\.lock\.json|ddduckVersion/);
 });
 
 test("update-ddduck-specs confirms each candidate with its own command, not the PATH command", () => {

@@ -10,7 +10,7 @@ Take the first candidate that runs. Confirm a candidate by appending `--version`
 2. `node_modules/.bin/ddduck` at the repository root, then at any enclosing workspace root.
 3. `node scripts/ddduck.mjs`, the repository's own `package.json` `bin` target, when the repository under analysis is ddduck itself.
 4. `ddduck` on `PATH`.
-5. A ddduck source checkout that the user named or that the repository records, only when its reported version matches the version the repository pins: a `ddduck` dependency in `package.json`, or `ddduckVersion` in `.ddduck/agent-skills.lock.json`.
+5. A ddduck source checkout that the user named. When `package.json` pins a `ddduck` dependency, the reported version must match that pin.
 
 Do not install dependencies and do not substitute an unrelated global version. A candidate that fails to run, or that reports a version incompatible with the pinned one, is not a resolution; continue with the next probe.
 
