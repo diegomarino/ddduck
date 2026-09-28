@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.0...ddduck-v0.3.1) (2026-09-24)
+
+
+### Documentation
+
+* **skills:** drop legacy installer lock pin ([a49c5ed](https://github.com/diegomarino/ddduck/commit/a49c5ed39591659ce66a36d601b6819f5613b971))
+
 ## [0.3.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.2.0...ddduck-v0.3.0) (2026-09-23)
 
 
