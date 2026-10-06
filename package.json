@@ -74,6 +74,6 @@
     "prettier": "^3.9.6"
   },
   "overrides": {
-    "fast-uri": "^3.1.7"
+    "fast-uri": "^3.1.8"
   }
 }
