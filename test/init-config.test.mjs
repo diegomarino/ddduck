@@ -13,7 +13,7 @@ test("init pre-fills .ddduck/config.json with ignore defaults when absent", () =
   const repo = mkdtempSync(path.join(tmpdir(), "ddduck-init-config-"));
   mkdirSync(path.join(repo, ".git"), { recursive: true });
 
-  const result = spawnSync(process.execPath, [cli, "init", "ddd", "--id", "model:sample"], {
+  const result = spawnSync(process.execPath, [cli, "init", "--yes", "ddd", "--id", "model:sample"], {
     cwd: repo,
     encoding: "utf8",
   });
@@ -34,7 +34,7 @@ test("init does not clobber an existing .ddduck/config.json", () => {
   const existing = `${JSON.stringify({ schemaVersion: "1", productRoot: "ddd", ignore: [] }, null, 2)}\n`;
   writeFileSync(path.join(repo, ".ddduck", "config.json"), existing);
 
-  const result = spawnSync(process.execPath, [cli, "init", "ddd", "--id", "model:sample"], {
+  const result = spawnSync(process.execPath, [cli, "init", "--yes", "ddd", "--id", "model:sample"], {
     cwd: repo,
     encoding: "utf8",
   });
@@ -50,7 +50,7 @@ test("init rolls back the published product when the config write fails so a ret
   // write fail after the product tree would otherwise be published.
   writeFileSync(path.join(repo, ".ddduck"), "not a directory\n");
 
-  const result = spawnSync(process.execPath, [cli, "init", "ddd", "--id", "model:sample"], {
+  const result = spawnSync(process.execPath, [cli, "init", "--yes", "ddd", "--id", "model:sample"], {
     cwd: repo,
     encoding: "utf8",
   });

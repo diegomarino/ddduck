@@ -31,7 +31,7 @@ import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./li
  */
 export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } = {}) {
   if (args.includes("--help")) {
-    stdout.write(renderHelp("query"));
+    stdout.write(renderHelp("query", args[0]));
     return;
   }
   const { positionals, options } = parseCommandArgs(args, {

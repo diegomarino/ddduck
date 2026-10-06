@@ -76,9 +76,10 @@ export function parseCommandArgs(args, { positionals = {}, options = {} } = {}) 
 /**
  * Render the --help text for one command, or the top-level command list.
  * @param {string} [command] - Command name; unknown or absent yields the overview.
+ * @param {string} [subject] - Optional create kind or query operation to focus the help.
  * @returns {string} The help text, newline-terminated.
  */
-export function renderHelp(command) {
+export function renderHelp(command, subject) {
   const usage = {
     undefined: [
       "Usage: ddduck <command> [options]",
@@ -95,10 +96,12 @@ export function renderHelp(command) {
       "JSON: --json emits one object with name and version.",
     ],
     init: [
-      "Syntax: ddduck init [destination] --id model:<product-id> [--json]",
-      "Defaults: destination is the productRoot configured in .ddduck/config.json, else ddd.",
-      "Writes: product.yaml, canonical directories, and all generated views in the new product root.",
-      "Success output: one text result with root, Model ID, canonical paths, and generated paths.",
+      "Syntax: ddduck init [destination] [--name <name>] [--id model:<product-id>] [--yes] [--json]",
+      "Defaults: editable prompts for product name, Model ID, and destination; Enter accepts each value and Ctrl+C cancels without creating files. Explicit arguments skip their prompts.",
+      "Defaults: name is the repository directory name (current directory outside Git), or the explicit ID slug; ID is model:<normalized-name>; destination is the productRoot configured in .ddduck/config.json, else ddd under the current directory.",
+      "Automation: --yes accepts defaults without prompting; required without an interactive terminal and with --json. It never overwrites a non-empty destination.",
+      "Writes: product.yaml, model/, decisions/, and generated views inside the destination; .ddduck/config.json at the repository root if absent, or inside the new product root outside Git.",
+      "Success output: a text summary with full paths, Model ID, configuration location when created, the next command, and a recommendation to install the coding-agent skill in the product repository.",
       "Exit status: 0 on success or help; nonzero if input is invalid or the destination is not empty.",
       "JSON: --json emits the same result as one JSON object.",
     ],
@@ -137,7 +140,7 @@ export function renderHelp(command) {
     ],
     install: [
       "Syntax: ddduck install skill [--repo <repository-root>] [--yes]",
-      "Defaults: --repo is the current directory; the confirmation prompt is asked unless --yes is passed.",
+      "Defaults: --repo is the nearest Git repository root, or the current directory outside Git; the confirmation prompt is asked unless --yes is passed.",
       "Writes: nothing directly; it runs `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck>/skills --skill '*' -y` in --repo, and the skills CLI installs every bundled skill into that project (canonical copy plus per-agent symlinks) and owns its own state.",
       "Success output: the exact delegated command on its own line, the confirmation prompt, then the streamed output of the delegated command.",
       "Exit status: 0 on a successful delegated install or help; 1 when the confirmation is declined (nothing installed), when input is invalid, or when npx cannot be started; otherwise the exit status of the delegated command.",
@@ -182,7 +185,61 @@ export function renderHelp(command) {
       "Usage: audit-fr-to-code --input <audit.yaml> --source-root <source-id>=<checkout> [--source-root <source-id>=<checkout> ...] --json",
     ],
   };
-  return `${(usage[command] ?? usage.undefined).join("\n")}\n`;
+  const examples = {
+    init: "ddduck init",
+    check: "ddduck check",
+    generate: "ddduck generate",
+    query: "ddduck query spec",
+    diff: "ddduck diff --base ../previous/ddd",
+    install: "ddduck install skill",
+    create: "ddduck create domain --id domain:catalog --name Catalog --purpose 'Organize the library catalog.'",
+    move: "ddduck move guarantee CAT-INV-01 --to domain:catalog",
+    split: "ddduck split guarantee CAT-INV-01 --into CAT-INV-02,CAT-INV-03 --decision ADR-001",
+    retire: "ddduck retire guarantee CAT-INV-01 --decision ADR-001",
+    "--version": "ddduck --version",
+  };
+  const createExamples = {
+    domain: examples.create,
+    concept:
+      "ddduck create concept --id concept:book --owner domain:catalog --name Book --purpose 'Identify a catalogued book.'",
+    "use-case": "ddduck create use-case --file use-case.yaml",
+    guarantee:
+      "ddduck create guarantee --origin CAT --classification invariant --owner domain:catalog --statement 'A Book has a stable catalog identity.'",
+  };
+  let lines = [...(usage[command] ?? usage.undefined)];
+  let example = examples[command];
+  if (command === "create" && Object.hasOwn(createExamples, subject)) {
+    lines = lines.filter((line) => !line.startsWith("Syntax:") || line.startsWith(`Syntax: ddduck create ${subject} `));
+    lines = lines.map((line) =>
+      line.startsWith("Defaults:")
+        ? "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); " +
+          (subject === "guarantee"
+            ? "the next origin/classification serial is allocated automatically."
+            : "required fields must be supplied explicitly.")
+        : line,
+    );
+    example = createExamples[subject];
+  }
+  if (command === "query" && ["node", "neighbors", "impact", "anchors", "spec", "context"].includes(subject)) {
+    const selection = subject === "spec" ? " [--id <model-id>]" : " --id <model-node-id>";
+    const history = subject === "context" ? "" : " [--history]";
+    lines[0] = `Syntax: ddduck query ${subject}${selection}${subject === "context" ? " [--id <model-node-id> ...]" : ""} [--root <product-root>]${history} [--json]`;
+    if (subject === "context") {
+      lines = lines.map((line) =>
+        line.startsWith("Options:")
+          ? "Options: --id <model-node-id> (repeatable), --root <product-root>; --history is not accepted."
+          : line,
+      );
+      lines = lines.map((line) =>
+        line.startsWith("Defaults:")
+          ? "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); select one or more distinct IDs."
+          : line,
+      );
+    }
+    example = `ddduck query ${subject}${subject === "spec" ? "" : " --id concept:book"}`;
+  }
+  if (example) lines.push(`Example: ${example}`);
+  return `${lines.join("\n")}\n`;
 }
 
 /**
