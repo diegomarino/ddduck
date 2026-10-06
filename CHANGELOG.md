@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.2...ddduck-v0.4.0) (2026-10-06)
+
+
+### Features
+
+* **archify:** add optional model atlas and GitHub Pages publishing ([#26](https://github.com/diegomarino/ddduck/issues/26)) ([53d655f](https://github.com/diegomarino/ddduck/commit/53d655fac749c4a33c68d45629e51fd452c62028))
+* **cli:** add confirmed npm global update command ([#24](https://github.com/diegomarino/ddduck/issues/24)) ([2e2694a](https://github.com/diegomarino/ddduck/commit/2e2694afa332517fe1cb757fa635b1fbc565f350))
+
+
+### Bug Fixes
+
+* **archify:** size atlas viewer to available viewport ([#28](https://github.com/diegomarino/ddduck/issues/28)) ([4a6029d](https://github.com/diegomarino/ddduck/commit/4a6029d2e22304d52ff47734f4acc1dff68879ef))
+
 ## [0.3.2](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.1...ddduck-v0.3.2) (2026-10-06)
 
 
