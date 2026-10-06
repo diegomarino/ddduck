@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.1...ddduck-v0.3.2) (2026-10-06)
+
+
+### Documentation
+
+* clarify domain boundaries and evidence review ([758fa44](https://github.com/diegomarino/ddduck/commit/758fa44b076ebe8bb7e698b03ae6678654d76046))
+
 ## [0.3.1](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.0...ddduck-v0.3.1) (2026-09-24)
 
 
