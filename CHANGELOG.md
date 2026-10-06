@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.0...ddduck-v0.4.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **archify:** separate card titles from full descriptions ([#30](https://github.com/diegomarino/ddduck/issues/30)) ([3fd58cf](https://github.com/diegomarino/ddduck/commit/3fd58cf5bbf4d55c21e3e60f48b00e5c95496142))
+
 ## [0.4.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.3.2...ddduck-v0.4.0) (2026-10-06)
 
 
