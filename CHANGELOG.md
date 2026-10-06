@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.1...ddduck-v0.4.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **archify:** compact complete models and clarify overview ([#32](https://github.com/diegomarino/ddduck/issues/32)) ([17aad32](https://github.com/diegomarino/ddduck/commit/17aad328c678025cfb64a2c816e8b292dbfeafb3))
+
 ## [0.4.1](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.0...ddduck-v0.4.1) (2026-10-06)
 
 
