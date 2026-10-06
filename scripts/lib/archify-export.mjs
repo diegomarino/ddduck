@@ -22,7 +22,7 @@ const esc = (s) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 const quote = (s) => JSON.stringify(String(s));
-export function projectViews(graph) {
+export function projectViews(graph, { showGuarantees = true } = {}) {
   assert.ok(Array.isArray(graph.nodes) && Array.isArray(graph.edges), "Expected graph nodes and edges.");
   const byId = new Map();
   for (const n of graph.nodes) {
@@ -56,7 +56,7 @@ export function projectViews(graph) {
     })),
     context: [],
   };
-  const overviewNodes = graph.nodes.filter((n) => n.kind === "Model" || n.kind === "Domain" || !n.ownerDomain);
+  const overviewNodes = graph.nodes.filter((n) => n.kind === "Model" || n.kind === "Domain");
   const overviewIds = new Set(overviewNodes.map((n) => n.id));
   const endpoint = (id) => (overviewIds.has(id) ? id : byId.get(id).ownerDomain);
   const overview = {
@@ -72,6 +72,7 @@ export function projectViews(graph) {
   for (const e of graph.edges) {
     const from = endpoint(e.from),
       to = endpoint(e.to);
+    if (!overviewIds.has(from) || !overviewIds.has(to)) continue;
     if (from === to) overview.internalEdges.push(e.id);
     else
       overview.edges.push({
@@ -100,6 +101,19 @@ export function projectViews(graph) {
       groups: [group],
     };
   });
+  if (!showGuarantees) {
+    const hidden = new Set(full.nodes.filter((n) => n.kind === "Guarantee").map((n) => n.id));
+    return [
+      {
+        ...full,
+        nodes: full.nodes.filter((n) => !hidden.has(n.id)),
+        edges: full.edges.filter((e) => !hidden.has(e.from) && !hidden.has(e.to)),
+        groups: full.groups.map((g) => ({ ...g, members: g.members.filter((id) => !hidden.has(id)) })),
+      },
+      overview,
+      ...details,
+    ];
+  }
   return [full, overview, ...details];
 }
 function wrap(s, max = 23) {
@@ -153,9 +167,10 @@ export async function renderView(view, graph) {
     return `${alias.get(n.id)} [label="",width=${w / 72},height=${h / 72}];`;
   });
   const clustered = new Set(view.groups.flatMap((g) => g.members));
+  const compact = view.id === "complete" || view.id === "complete-without-guarantees";
   const dot = [
     "digraph D {",
-    'graph [rankdir=LR, nodesep=0.35, ranksep=0.8, compound=true, splines=spline, pad=0.35, bgcolor="transparent"];',
+    `graph [${compact ? "layout=fdp, overlap=false, " : ""}rankdir=LR, nodesep=0.35, ranksep=0.8, compound=true, splines=spline, pad=0.35, bgcolor="transparent"];`,
     "node [shape=box, fixedsize=true];",
     'edge [fontname="Arial",fontsize=12,arrowsize=0.7];',
   ];
@@ -172,7 +187,7 @@ export async function renderView(view, graph) {
       `${alias.get(e.from)} -> ${alias.get(e.to)} [id=${quote(e.id)},label=${quote(e.label)},weight=${e.kind === "owns" ? 3 : 1}];`,
     );
   dot.push("}");
-  const layout = JSON.parse(engine.layout(dot.join("\n"), "json", "dot"));
+  const layout = JSON.parse(engine.layout(dot.join("\n"), "json", compact ? "fdp" : "dot"));
   const [, , width, height] = layout.bb.split(",").map(Number),
     margin = 28;
   const point = ([x, y]) => [x + margin, height - y + margin];
@@ -289,6 +304,11 @@ export async function exportModel(source, output, archifyRoot) {
   const bytes = readFileSync(source),
     graph = JSON.parse(bytes),
     views = projectViews(graph);
+  views.push({
+    ...projectViews(graph, { showGuarantees: false })[0],
+    id: "complete-without-guarantees",
+    label: "Complete model without guarantees",
+  });
   const root = path.resolve(archifyRoot),
     template = adaptPassport(readFileSync(path.join(root, "assets/template.html"), "utf8"));
   const { writeDiagram } = await import(pathToFileURL(path.join(root, "renderers/shared/cli.mjs")));
@@ -316,7 +336,7 @@ export async function exportModel(source, output, archifyRoot) {
           items: [
             `${view.nodes.length} nodes · ${view.edges.length} semantic relationships`,
             view.summary
-              ? "References to hidden members terminate at their Domain; detail views retain exact endpoints."
+              ? "Model and Domain relationships only; Domain details retain exact endpoints and actions."
               : "Solid arrows: ownership and domain relationships. Dashed arrows: references. Dashed cards: external context.",
           ],
         },
@@ -340,13 +360,14 @@ export async function exportModel(source, output, archifyRoot) {
     });
   }
   const options = records
+    .filter((v) => v.id !== "complete-without-guarantees")
     .map(
       (v) =>
-        `<option value="${v.id}">${v.id === "model" ? "Model and sublevels" : esc(v.label)} · ${v.nodes} nodes</option>`,
+        `<option value="${v.id}">${v.id === "model" ? "Model overview" : esc(v.label)} · ${v.nodes} nodes</option>`,
     )
     .join("");
   const hierarchy = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(name)} · Model and sublevels</title><style>body{font:15px system-ui;background:#f3f5f8;color:#172033;margin:24px}h1{font-size:22px}iframe{width:100%;height:850px;border:0}details{border:1px solid #d8dfe9;border-radius:12px;background:white;margin:24px 0;padding:16px}summary{cursor:pointer;font-weight:600}a{color:#2855a0}</style><h1>Model and sublevels</h1><p>The overview summarizes references at Domain level. Each diagram below preserves exact endpoints and shows external context with dashed cards.</p><iframe title="Model overview" src="model.html"></iframe>${records
-    .slice(2)
+    .filter((v) => v.id.startsWith("domain-"))
     .map(
       (v) =>
         `<details open><summary>${esc(v.label)} · ${v.nodes} nodes including context</summary><p><a href="${v.id}.html" target="_blank" rel="noopener">Open diagram / export</a></p><iframe loading="lazy" title="${esc(v.label)}" src="${v.id}.html"></iframe></details>`,
@@ -354,7 +375,28 @@ export async function exportModel(source, output, archifyRoot) {
     .join("")}</html>`;
   writeFileSync(path.join(output, "hierarchy.html"), hierarchy);
   // ponytail: a static HTML bundle shares one viewer frame; no new application framework.
-  const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(name)} · Model atlas</title><style>body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#f3f5f8;color:#172033;font:15px system-ui}header{flex:none;padding:20px 28px;background:white;border-bottom:1px solid #d8dfe9;display:flex;gap:24px;align-items:center;flex-wrap:wrap}h1{font-size:22px;margin:0}p{margin:6px 0;color:#536177}select,a{font:inherit}select{padding:10px;border:1px solid #b8c4d4;border-radius:8px;min-width:260px}a{color:#2855a0}iframe{display:block;flex:1;min-height:0;width:100%;border:0}nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}</style></head><body><header><div><h1>${esc(name)} · Model atlas</h1><p>Complete graph, model overview and domain details · ${graph.nodes.length} canonical nodes · ${graph.edges.length} relationships</p></div><nav><label for="view">View</label><select id="view">${options}</select><a id="separate" href="complete.html" target="_blank" rel="noopener">Open view separately</a></nav></header><iframe id="diagram" title="Complete model" src="complete.html"></iframe><script>const view=document.getElementById('view'),frame=document.getElementById('diagram'),link=document.getElementById('separate');function change(){frame.src=(view.value==='model'?'hierarchy':view.value)+'.html';frame.title=view.selectedOptions[0].text;link.href=frame.src;location.hash=view.value;}view.addEventListener('change',change);const initial=location.hash.slice(1);if([...view.options].some(o=>o.value===initial)){view.value=initial;change();}</script></body></html>`;
+  const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(name)} · Model atlas</title><style>body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#f3f5f8;color:#172033;font:15px system-ui}header{flex:none;padding:20px 28px;background:white;border-bottom:1px solid #d8dfe9;display:flex;gap:24px;align-items:center;flex-wrap:wrap}h1{font-size:22px;margin:0}p{margin:6px 0;color:#536177}select,a{font:inherit}select{padding:10px;border:1px solid #b8c4d4;border-radius:8px;min-width:260px}a{color:#2855a0}iframe{display:block;flex:1;min-height:0;width:100%;border:0}nav{display:flex;gap:14px;align-items:center;flex-wrap:wrap}</style></head><body><header><div><h1>${esc(name)} · Model atlas</h1><p>Complete graph, model overview and domain details · ${graph.nodes.length} canonical nodes · ${graph.edges.length} relationships</p></div><nav><label for="view">View</label><select id="view">${options}</select><label id="guarantees-control"><input id="guarantees" type="checkbox" checked> Show guarantees</label><a id="separate" href="complete.html" target="_blank" rel="noopener">Open view separately</a></nav></header><iframe id="diagram" title="Complete model" src="complete.html"></iframe><script>const view=document.getElementById('view'),frame=document.getElementById('diagram'),link=document.getElementById('separate'),guarantees=document.getElementById('guarantees'),control=document.getElementById('guarantees-control');
+const counts=[${records[0].nodes},${records.at(-1).nodes}];
+function change(){
+  const complete=view.value==='complete';
+  const id=complete&&!guarantees.checked?'complete-without-guarantees':view.value;
+  control.hidden=!complete;
+  view.options[0].textContent='Complete model · '+counts[guarantees.checked?0:1]+' nodes';
+  frame.src=id+'.html';
+  frame.title=complete&&!guarantees.checked?'Complete model without guarantees':view.selectedOptions[0].text;
+  link.href=frame.src;
+  location.hash=id;
+}
+view.addEventListener('change',change);
+guarantees.addEventListener('change',change);
+const initial=location.hash.slice(1);
+if(initial==='complete-without-guarantees'){
+  guarantees.checked=false;
+  change();
+}else if([...view.options].some(o=>o.value===initial)){
+  view.value=initial;
+  change();
+}</script></body></html>`;
   writeFileSync(path.join(output, "index.html"), index);
   writeFileSync(
     path.join(output, "manifest.json"),
