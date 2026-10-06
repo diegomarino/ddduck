@@ -77,8 +77,14 @@ Or run it from a local checkout for contributing (`npm install`, then `npm link`
 [Install ddduck](docs/getting-started.md#install-ddduck)). Create a product root with:
 
 ```bash
-ddduck init ddd --id model:<product-id>
+ddduck init
 ```
+
+`init` presents editable defaults for the product name, Model ID, and product directory.
+Press Enter to accept a value or Ctrl+C to cancel without creating files. Product files go
+inside `ddd/` by default; inside Git, repository configuration goes in `.ddduck/config.json`.
+For scripts, use `ddduck init ddd --id model:<product-id> --yes`; `--yes` accepts defaults
+without prompting and never overwrites a non-empty destination.
 
 `--root <path>` is always the explicit override; without it, ddduck resolves the enclosing
 product root, then `.ddduck/config.json`, then a unique repository candidate (see
@@ -96,10 +102,10 @@ safety net.
 Install the evidence-backed model maintenance skill in a consumer repository:
 
 ```bash
-ddduck install skill --repo <repository-root>
+ddduck install skill
 ```
 
-`--repo` defaults to the current directory. ddduck installs nothing itself: it prints the exact
+`--repo` defaults to the nearest Git repository root, or the current directory outside Git. ddduck installs nothing itself: it prints the exact
 `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck-package>/skills --skill '*' -y`
 command it will run, asks `[y/n]`, and
 delegates the installation to the [`skills`](https://www.npmjs.com/package/skills) CLI, which

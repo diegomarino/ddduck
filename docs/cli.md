@@ -84,6 +84,9 @@ note naming the validated root so an implicitly resolved (for example config-pin
 validated invisibly. Successful product mutations print one concise result line, or one JSON result
 object when `--json` is available.
 
+Command help includes minimal examples. For focused syntax, use `ddduck create domain --help`
+or `ddduck query node --help`; these keep the same operational and JSON contracts.
+
 ## `update`
 
 ```text
@@ -93,6 +96,9 @@ ddduck update [--yes]
 Updates the executing CLI only when it is the actual npm global installation. It resolves
 the global prefix and package directory through npm, refuses a linked checkout or a different
 installation, and reads the latest stable release version from the configured npm registry.
+The target is the executing CLI, not a dependency discovered in the current directory:
+running the global executable updates the global package even inside a project with a local
+ddduck dependency; running that local dependency refuses the update.
 It displays the installed and available versions, leaves an equal or newer installed release
 alone, and prints the exact command before asking `[y/n]`. `--yes` skips this confirmation;
 closed input declines it. `--json` and `--force` are not accepted.
@@ -114,20 +120,50 @@ unsupported installation/version, declined confirmation, npm failure, or failed 
 ## `init`
 
 ```text
-ddduck init [destination] --id model:<product-id> [--json]
+ddduck init [destination] [--name <name>] [--id model:<product-id>] [--yes] [--json]
 ```
 
-| Option or argument | Required | Default                       | Meaning                                           |
-| ------------------ | -------- | ----------------------------- | ------------------------------------------------- |
-| `destination`      | no       | config, then `ddd/` directory | Empty directory to create as the product root.    |
-| `--id`             | yes      | none                          | Root Model ID, matching `model:<lowercase-slug>`. |
-| `--json`           | no       | false                         | Emit one JSON result object instead of text.      |
+| Option or argument | Required       | Default                                        | Meaning                                                                     |
+| ------------------ | -------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `destination`      | no             | config, then `ddd/` directory                  | Empty directory to create as the product root.                              |
+| `--name`           | no             | repository directory name, or explicit ID slug | Product display name.                                                       |
+| `--id`             | no             | `model:<normalized-name>`                      | Root Model ID, matching `model:<lowercase-slug>`.                           |
+| `--yes`            | for automation | false                                          | Accept defaults without prompting; never overwrite a non-empty destination. |
+| `--json`           | no             | false                                          | Emit one JSON result object instead of text.                                |
+
+In an interactive terminal, `init` pre-fills editable product name, Model ID, and destination
+answers. Enter accepts the value; Ctrl+C or closed input cancels before any filesystem write.
+Explicit arguments skip their prompts. Editing the name changes the proposed ID unless
+`--id` was supplied. The destination affects storage only, never product identity.
+
+Without `--name`, the name comes from the explicit ID slug or the repository directory name
+(the current directory outside Git). ID inference lowercases the name, removes diacritics,
+replaces runs of other characters with hyphens, and removes leading/trailing hyphens.
+An unusable inferred ID fails with an instruction to supply `--id`.
+
+`--yes` is required without an interactive terminal and with `--json`, including when all
+values are explicit. Existing scripts using `init --id` must add `--yes`. For example:
+
+```bash
+ddduck init --yes
+ddduck init specs --name "Reading Room" --id model:library --yes --json
+```
 
 `init` writes the canonical directory layout, `product.yaml`, and the four fresh generated views
 (`generated/docs/model-overview.md`, `generated/graph/model-graph.json`,
 `generated/graph/model-graph.ndjson`, and `generated/graph/model-graph.svg`). It refuses a
-non-empty destination. On success it reports the Model ID, normalized root,
-`product.yaml`, and all generated paths as one text line or, with `--json`, one object containing
+non-empty destination, including an already initialized product. Product files live inside
+the destination (`ddd/` by default). Configuration is created at the Git repository root
+as `.ddduck/config.json`, or inside the new product root outside Git; existing configuration
+is preserved. `--force` is not supported.
+
+On success it reports the Model ID, normalized root, full created paths, configuration
+location when created, a next command to regenerate views after manual edits, and a strong recommendation for coding agents to
+install the ddduck skill for model authoring and maintenance. The printed
+`ddduck install skill` command detects the repository root from the working directory,
+or uses the working directory outside Git; installation is a separate explicit action.
+Use `--repo <repository-root>` to choose another installation target.
+With `--json`, it emits the unchanged object containing
 `operation`, `root`, `affectedIds`, `canonicalPaths`, and `generatedPaths`. On failure it exits
 nonzero without reporting success.
 
@@ -335,7 +371,7 @@ The command does not recursively expand the perimeter.
 ddduck install skill [--repo <repository-root>] [--yes]
 ```
 
-`--repo` defaults to the current directory. ddduck installs nothing itself: it delegates to the
+`--repo` defaults to the nearest Git repository root, or the current directory outside Git. ddduck installs nothing itself: it delegates to the
 [`skills`](https://www.npmjs.com/package/skills) CLI, which supports 79 agent hosts and owns the
 installed layout and its own state. The command prints the exact command it will run, on its own
 line, and then runs it in `--repo`:

@@ -114,6 +114,49 @@ test("subcommand help requests print command help instead of failing", () => {
   assert.equal(result.stderr, "");
 });
 
+test("create help shows only the selected subject syntax and a runnable example", () => {
+  for (const subject of ["domain", "concept", "use-case", "guarantee"]) {
+    const result = runDdd(["create", subject, "--help"]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, new RegExp(`Syntax: ddduck create ${subject} `));
+    assert.match(result.stdout, new RegExp(`Example: ddduck create ${subject} `));
+    for (const other of ["domain", "concept", "use-case", "guarantee"].filter((value) => value !== subject)) {
+      assert.doesNotMatch(result.stdout, new RegExp(`Syntax: ddduck create ${other} `));
+    }
+  }
+});
+
+test("query subject help narrows the operation while preserving its JSON contract", () => {
+  for (const [subject, syntax] of [
+    ["node", /Syntax: ddduck query node --id/],
+    ["spec", /Syntax: ddduck query spec \[--id <model-id>\]/],
+  ]) {
+    const result = runDdd(["query", subject, "--help"]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, syntax);
+    assert.match(result.stdout, new RegExp(`Example: ddduck query ${subject}`));
+    assert.match(result.stdout, /output is always JSON/);
+  }
+});
+
+test("install skill detects repository root from nested directories and keeps explicit overrides", () => {
+  const repository = makeRepositoryShell("ddduck-install-root-");
+  const nested = path.join(repository, "src");
+  mkdirSync(nested);
+  const elsewhere = mkdtempSync(path.join(tmpdir(), "ddduck-install-override-"));
+  for (const [args, cwd, expected] of [
+    [["install", "skill"], nested, repository],
+    [["install", "skill", "--repo", elsewhere], nested, elsewhere],
+    [["install", "skill"], elsewhere, elsewhere],
+  ]) {
+    const result = runDddWithInput(args, "n\n", cwd);
+    assert.equal(result.status, 1);
+    const selected = args.includes("--repo") ? expected : realpathSync(expected);
+    assert.ok(result.stdout.includes(`runs this command in ${selected}:`), result.stdout);
+    assert.match(result.stderr, /declined/);
+  }
+});
+
 test("rejects unknown, duplicate, and valueless command options without a stack trace", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-cli-contract-"));
   const cases = [
@@ -270,7 +313,7 @@ test("generate refuses a generated directory symlink without writing outside the
 
 test("init creates a valid product directory with fresh derived output", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-init-"));
-  const result = runDdd(["init", destination, "--id", "model:sample"]);
+  const result = runDdd(["init", "--yes", destination, "--id", "model:sample"]);
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(readFileSync(path.join(destination, "product.yaml"), "utf8"), /schemaVersion: "1"/);
@@ -282,7 +325,7 @@ test("an interrupted init leaves no partial destination and the retry succeeds",
 
   for (const killDelay of [30, 40, 50, 55, 60, 70, 80]) {
     const destination = path.join(parent, `ddd-${killDelay}`);
-    const child = spawn(process.execPath, [cli, "init", destination, "--id", "model:sample"]);
+    const child = spawn(process.execPath, [cli, "init", "--yes", destination, "--id", "model:sample"]);
     const closed = new Promise((resolve) => child.on("close", resolve));
     await delay(killDelay);
     child.kill("SIGKILL");
@@ -294,7 +337,7 @@ test("an interrupted init leaves no partial destination and the retry succeeds",
       false,
       `init killed after ${killDelay}ms left a partial destination: ${existsSync(destination) ? readdirSync(destination).join(", ") : ""}`,
     );
-    const retry = runDdd(["init", destination, "--id", "model:sample"]);
+    const retry = runDdd(["init", "--yes", destination, "--id", "model:sample"]);
     assert.equal(retry.status, 0, retry.stderr);
     assert.ok(existsSync(path.join(destination, "generated", "graph", "model-graph.ndjson")));
   }
@@ -323,7 +366,7 @@ test("interrupted-init staging debris never poisons no-root commands and the nex
   const foreignStage = path.join(repository, ".ddduck-init-stage-other-live");
   mkdirSync(path.join(foreignStage, "model"), { recursive: true });
 
-  const initialized = runDdd(["init", "ddd", "--id", "model:demo"], repository);
+  const initialized = runDdd(["init", "--yes", "ddd", "--id", "model:demo"], repository);
   assert.equal(initialized.status, 0, initialized.stderr);
   assert.equal(existsSync(debris), false, "init must sweep its own destination's staging debris");
   assert.equal(
@@ -352,7 +395,7 @@ test("init sweeps same-destination staging only when its creating process is dea
     mkdirSync(path.join(liveStage, "model"), { recursive: true });
     mkdirSync(path.join(deadStage, "model"), { recursive: true });
 
-    const initialized = runDdd(["init", "ddd", "--id", "model:demo"], repository);
+    const initialized = runDdd(["init", "--yes", "ddd", "--id", "model:demo"], repository);
     assert.equal(initialized.status, 0, initialized.stderr);
     assert.equal(
       existsSync(liveStage),
@@ -425,16 +468,27 @@ test("install skill rejects unsupported mutation and host options", () => {
 
 test("init reports canonical and generated paths in text and JSON", () => {
   const textDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-text-"));
-  const textResult = runDdd(["init", textDestination, "--id", "model:text-result"]);
+  const textResult = runDdd(["init", "--yes", textDestination, "--id", "model:text-result"]);
 
   assert.equal(textResult.status, 0, textResult.stderr);
-  assert.equal(
-    textResult.stdout,
-    `init model:text-result in ${realpathSync(textDestination)}; canonical: product.yaml; generated: generated/docs/model-overview.md, generated/graph/model-graph.json, generated/graph/model-graph.ndjson, generated/graph/model-graph.svg; config: ${path.join(textDestination, ".ddduck", "config.json")} (created)\n`,
-  );
+  assert.ok(textResult.stdout.includes(`Initialized product in ${realpathSync(textDestination)}`));
+  assert.match(textResult.stdout, /Model: model:text-result/);
+  for (const entry of [
+    "product.yaml",
+    "model",
+    "decisions",
+    "generated/docs/model-overview.md",
+    "generated/graph/model-graph.json",
+    "generated/graph/model-graph.ndjson",
+    "generated/graph/model-graph.svg",
+  ]) {
+    assert.ok(textResult.stdout.includes(path.join(realpathSync(textDestination), entry)));
+  }
+  assert.ok(textResult.stdout.includes(path.join(textDestination, ".ddduck", "config.json")));
+  assert.match(textResult.stdout, /Next: .*\n  ddduck generate --root/);
 
   const jsonDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-json-"));
-  const jsonResult = runDdd(["init", jsonDestination, "--id", "model:json-result", "--json"]);
+  const jsonResult = runDdd(["init", "--yes", jsonDestination, "--id", "model:json-result", "--json"]);
 
   assert.equal(jsonResult.status, 0, jsonResult.stderr);
   assert.equal(jsonResult.stderr, "");
@@ -456,7 +510,7 @@ test("init reports canonical and generated paths in text and JSON", () => {
 test("an invalid product ID error teaches the expected format with an example", () => {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-invalid-id-"));
 
-  const result = runDdd(["init", destination, "--id", "library"]);
+  const result = runDdd(["init", "--yes", destination, "--id", "library"]);
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Invalid product ID "library"/);
@@ -467,7 +521,7 @@ test("expected command errors include a command-specific safe next action", () =
   const invalidInitRoot = mkdtempSync(path.join(tmpdir(), "ddduck-invalid-init-"));
   const productRoot = makeProductFixture();
   const cases = [
-    [runDdd(["init", invalidInitRoot, "--id", "invalid"]), /Next: Run ddduck init --help/],
+    [runDdd(["init", "--yes", invalidInitRoot, "--id", "invalid"]), /Next: Run ddduck init --help/],
     [
       runDdd([
         "create",
@@ -827,8 +881,8 @@ test("check names the validated root on stderr when --root is resolved implicitl
 
 test("check beside a broken second product names the config-pinned root it validated", () => {
   const repository = makeRepositoryShell("ddduck-wrong-root-");
-  assert.equal(runDdd(["init", "apps/a/ddd", "--id", "model:alpha"], repository).status, 0);
-  assert.equal(runDdd(["init", "apps/b/ddd", "--id", "model:beta"], repository).status, 0);
+  assert.equal(runDdd(["init", "--yes", "apps/a/ddd", "--id", "model:alpha"], repository).status, 0);
+  assert.equal(runDdd(["init", "--yes", "apps/b/ddd", "--id", "model:beta"], repository).status, 0);
   const brokenProductPath = path.join(repository, "apps", "b", "ddd", "product.yaml");
   writeFileSync(
     brokenProductPath,
@@ -850,27 +904,27 @@ test("init reports the repository config write and points at a pinned default on
   const repository = makeRepositoryShell("ddduck-init-config-report-");
   const configPath = path.join(realpathSync(repository), ".ddduck", "config.json");
 
-  const first = runDdd(["init", "apps/a/ddd", "--id", "model:alpha"], repository);
+  const first = runDdd(["init", "--yes", "apps/a/ddd", "--id", "model:alpha"], repository);
   assert.equal(first.status, 0, first.stderr);
-  assert.match(first.stdout, new RegExp(`; config: ${escapeRegExp(configPath)} \\(created\\)\\n$`));
+  assert.ok(first.stdout.includes(`Saved configuration: ${configPath}`));
 
-  const second = runDdd(["init", "apps/b/ddd", "--id", "model:beta"], repository);
+  const second = runDdd(["init", "--yes", "apps/b/ddd", "--id", "model:beta"], repository);
   assert.equal(second.status, 0, second.stderr);
-  assert.doesNotMatch(second.stdout, /config:/);
+  assert.doesNotMatch(second.stdout, /Saved configuration:/);
   assert.ok(
     second.stderr.includes(configPath) && second.stderr.includes("apps/a/ddd"),
     `a second init must point at the still-pinned repository default root: ${second.stderr}`,
   );
 
   const jsonRepository = makeRepositoryShell("ddduck-init-config-json-");
-  const jsonResult = runDdd(["init", "ddd", "--id", "model:alpha", "--json"], jsonRepository);
+  const jsonResult = runDdd(["init", "--yes", "ddd", "--id", "model:alpha", "--json"], jsonRepository);
   assert.equal(jsonResult.status, 0, jsonResult.stderr);
   assert.equal(
     JSON.parse(jsonResult.stdout).configPath,
     path.join(realpathSync(jsonRepository), ".ddduck", "config.json"),
   );
 
-  const preExisting = runDdd(["init", "other", "--id", "model:beta", "--json"], jsonRepository);
+  const preExisting = runDdd(["init", "--yes", "other", "--id", "model:beta", "--json"], jsonRepository);
   assert.equal(preExisting.status, 0, preExisting.stderr);
   assert.equal(Object.hasOwn(JSON.parse(preExisting.stdout), "configPath"), false);
 });
@@ -917,14 +971,14 @@ test("init uses explicit destination before config and configured destination be
   const configuredRepository = makeRepositoryShell("ddduck-init-configured-");
   writeRepositoryConfig(configuredRepository, "docs/ddd");
 
-  const configured = runDdd(["init", "--id", "model:configured"], configuredRepository);
+  const configured = runDdd(["init", "--yes", "--id", "model:configured"], configuredRepository);
   assert.equal(configured.status, 0, configured.stderr);
   assert.ok(existsSync(path.join(configuredRepository, "docs", "ddd", "product.yaml")));
   assert.equal(existsSync(path.join(configuredRepository, "ddd", "product.yaml")), false);
 
   const explicitRepository = makeRepositoryShell("ddduck-init-explicit-");
   writeRepositoryConfig(explicitRepository, "docs/ddd");
-  const explicit = runDdd(["init", "custom-ddd", "--id", "model:explicit"], explicitRepository);
+  const explicit = runDdd(["init", "--yes", "custom-ddd", "--id", "model:explicit"], explicitRepository);
   assert.equal(explicit.status, 0, explicit.stderr);
   assert.ok(existsSync(path.join(explicitRepository, "custom-ddd", "product.yaml")));
   assert.equal(existsSync(path.join(explicitRepository, "docs", "ddd", "product.yaml")), false);
@@ -1621,7 +1675,7 @@ test("reference and arity errors state the expected shape", () => {
 
 function makeProductFixture() {
   const destination = mkdtempSync(path.join(tmpdir(), "ddduck-lifecycle-"));
-  const initialized = runDdd(["init", destination, "--id", "model:sample"]);
+  const initialized = runDdd(["init", "--yes", destination, "--id", "model:sample"]);
   assert.equal(initialized.status, 0, initialized.stderr);
   for (const [id, name] of [
     ["domain:members", "Members"],
@@ -1742,7 +1796,7 @@ function assertOperationalArtifactsAbsent(productRoot) {
 function makeConfiguredRepository() {
   const repository = makeRepositoryShell("ddduck-configured-root-");
   const productRoot = path.join(repository, "docs", "ddd");
-  const initialized = runDdd(["init", productRoot, "--id", "model:configured-root"], repository);
+  const initialized = runDdd(["init", "--yes", productRoot, "--id", "model:configured-root"], repository);
   assert.equal(initialized.status, 0, initialized.stderr);
   writeRepositoryConfig(repository, "docs/ddd");
   return repository;

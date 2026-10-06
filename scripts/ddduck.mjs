@@ -39,7 +39,9 @@ import {
   validationFailureError,
 } from "./lib/product-operation.mjs";
 import { resolveContainedOutput } from "./lib/product-paths.mjs";
-import { initStagingPrefix, resolveInitDestination, resolveProductRoot } from "./lib/product-root-resolver.mjs";
+import { initStagingPrefix, resolveProductRoot } from "./lib/product-root-resolver.mjs";
+import { resolveInitInput } from "./lib/init-input.mjs";
+import { shellQuote } from "./lib/context-pack.mjs";
 import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
 import { delegateSkillInstall } from "./lib/skill-delegation.mjs";
 import { updateCli } from "./lib/update-cli.mjs";
@@ -69,7 +71,7 @@ const topLevelCommands = [
 const cliArgs = process.argv.slice(2);
 
 try {
-  run(cliArgs);
+  await run(cliArgs);
 } catch (error) {
   writeCliError(error, { nextAction: nextActionFor(cliArgs) });
 }
@@ -77,9 +79,9 @@ try {
 /**
  * Dispatch one parsed CLI invocation to its command handler.
  * @param {string[]} args - Raw CLI arguments (process.argv minus node and script).
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function run(args) {
+async function run(args) {
   if (args.length === 1 && args[0] === "--help") {
     process.stdout.write(renderHelp());
     return;
@@ -92,7 +94,7 @@ function run(args) {
     throw new CliUsageError(`Unknown command ${command ?? "(missing)"}`);
   }
   if (commandArgs.includes("--help")) {
-    process.stdout.write(renderHelp(command));
+    process.stdout.write(renderHelp(command, commandArgs[0]));
     return;
   }
   if (command === "--version") {
@@ -105,7 +107,7 @@ function run(args) {
     return;
   }
   if (command === "init") {
-    const { result, json } = initialize(commandArgs);
+    const { result, json } = await initialize(commandArgs);
     writeProductOperationResult(result, json);
     return;
   }
@@ -177,7 +179,7 @@ function install(args) {
   if (positionals[0] !== "skill") {
     throw new CliUsageError(`install requires the subject skill, not ${JSON.stringify(positionals[0])}`);
   }
-  const repository = path.resolve(options.repo ?? process.cwd());
+  const repository = options.repo ? path.resolve(options.repo) : findRepositoryRoot();
   // A typo'd --repo must fail instead of installing into the wrong directory
   // (npx would happily create it) while the real repository gets nothing.
   if (!existsSync(repository) || !statSync(repository).isDirectory()) {
@@ -201,20 +203,10 @@ function install(args) {
  * the destination, then publish it atomically via rename and write
  * .ddduck/config.json if absent.
  * @param {string[]} args - Arguments after the `init` command word.
- * @returns {{result: object, json: boolean}} The operation result and whether --json was requested.
+ * @returns {Promise<{result: object, json: boolean}>} The operation result and whether --json was requested.
  */
-function initialize(args) {
-  const { positionals, options } = parseCommandArgs(args, {
-    positionals: { min: 0, max: 1 },
-    options: { id: { value: true }, json: { value: false } },
-  });
-  const destination = resolveInitDestination({ explicitDestination: positionals[0] });
-  const productId = requiredOption(options, "id", "init requires --id model:<product-id>");
-  if (!/^model:[a-z0-9][a-z0-9-]*$/.test(productId)) {
-    throw new Error(
-      `Invalid product ID ${JSON.stringify(productId)}; expected model:<lowercase-slug> (for example model:library)`,
-    );
-  }
+async function initialize(args) {
+  const { destination, productId, name, json } = await resolveInitInput(args);
 
   mkdirSync(path.dirname(destination), { recursive: true });
   if (existsSync(destination) && readdirSync(destination).length > 0) {
@@ -244,7 +236,7 @@ function initialize(args) {
       schemaVersion: "1",
       kind: "Model",
       id: productId,
-      name: productId.slice("model:".length),
+      name,
       purpose: "Define this product.",
       domains: [],
       useCases: [],
@@ -280,7 +272,7 @@ function initialize(args) {
   }
   if (!config.created) warnPinnedRepositoryDefault(config, destination);
   return {
-    json: options.json,
+    json,
     result: {
       operation: "init",
       root: realpathSync(destination),
@@ -514,7 +506,7 @@ function requireRegisteredDecision(root, decision, command) {
 }
 
 /**
- * Print an operation result as one text line or one JSON object (--json).
+ * Print an operation result as text (a path summary for init) or one JSON object.
  * @param {{operation: string, root: string, affectedIds: string[], canonicalPaths: string[], generatedPaths: string[], configPath?: string}} result - Result from the operation runner or init.
  * @param {boolean} json - Emit JSON instead of the text form.
  * @returns {void}
@@ -522,6 +514,17 @@ function requireRegisteredDecision(root, decision, command) {
 function writeProductOperationResult(result, json) {
   if (json) {
     process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+  if (result.operation === "init") {
+    process.stdout.write(
+      `Initialized product in ${result.root}\nModel: ${result.affectedIds[0]}\n` +
+        `Created:\n${[...result.canonicalPaths, "model/", "decisions/", ...result.generatedPaths].map((entry) => `  ${path.join(result.root, entry)}`).join("\n")}\n` +
+        (result.configPath ? `Saved configuration: ${result.configPath}\n` : "") +
+        `Next: edit ${path.join(result.root, "product.yaml")}, then run:\n  ddduck generate --root ${shellQuote(result.root)}\n` +
+        `\nHighly recommended for coding agents: install the ddduck skill for model authoring and maintenance.\n` +
+        `  ddduck install skill\n`,
+    );
     return;
   }
   const affected = result.affectedIds.length > 0 ? ` ${result.affectedIds.join(", ")}` : "";

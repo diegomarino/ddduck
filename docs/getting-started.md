@@ -48,6 +48,17 @@ separately with `ddduck install skill` from that project directory.
 
 ## Create the first product
 
+Run `ddduck init` in a terminal to edit the proposed product name, Model ID, and directory.
+Enter accepts the pre-filled value; Ctrl+C cancels before any files are created.
+The default product directory is `ddd/`, separate from repository-level configuration.
+Use `--name`, `--id`, or a destination argument to skip the corresponding prompt.
+For automation, `--yes` accepts the remaining defaults without prompting; it is required
+without an interactive terminal and with `--json`.
+
+For coding agents, installing the ddduck skill is highly recommended: it guides model
+authoring and maintenance. The text result of `init` prints the appropriate
+`ddduck install skill` command; run it to install the skill.
+
 Run the complete Bash block from an empty working directory with `ddduck` on `PATH`, normally
 inside a Git repository: `init` records the repository default in `.ddduck/config.json` at the
 repository root, and without one writes it inside the new product root instead (see
@@ -64,7 +75,7 @@ flowchart LR
 ```
 
 ```bash
-ddduck init ddd --id model:library
+ddduck init ddd --id model:library --yes
 
 ddduck create domain --id domain:catalog --name Catalog \
   --purpose "Organize the library catalog." --root ddd
