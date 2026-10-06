@@ -7,6 +7,11 @@ import { readAnswer } from "./skill-delegation.mjs";
 
 /** Update this npm-global installation, after showing and confirming the exact command. */
 export function updateCli({ frameworkRoot, assumeYes = false }) {
+  if (!["darwin", "linux"].includes(process.platform)) {
+    throw new CliUsageError("update supports macOS and Linux only", {
+      nextAction: "Update ddduck through your package manager on this platform.",
+    });
+  }
   const prefix = npmOutput(["prefix", "--global"]);
   if (!path.isAbsolute(prefix)) throw new CliUsageError("npm returned an invalid global prefix");
   const globalRoot = npmOutput(["root", "--global", "--prefix", prefix]);

@@ -13,6 +13,27 @@ const dependencies = createRequire(import.meta.url)
   .resolve.paths("yaml")
   .find((directory) => existsSync(path.join(directory, "yaml", "package.json")));
 
+test("update rejects unsupported hosts before calling npm", () => {
+  for (const platform of ["win32", "freebsd"]) {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `
+      Object.defineProperty(process, "platform", { value: ${JSON.stringify(platform)} });
+      const { updateCli } = await import(${JSON.stringify(new URL("../scripts/lib/update-cli.mjs", import.meta.url).href)});
+      updateCli({ frameworkRoot: ${JSON.stringify(root)}, assumeYes: true });
+    `,
+      ],
+      { encoding: "utf8", env: { ...process.env, PATH: "" } },
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /update supports macOS and Linux only/);
+    assert.doesNotMatch(result.stderr, /npm .*failed/);
+  }
+});
+
 function fixture(t, options = {}) {
   const temporary = mkdtempSync(path.join(tmpdir(), "ddduck-update-"));
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
