@@ -221,7 +221,7 @@ export function renderHelp(command, subject) {
     example = createExamples[subject];
   }
   if (command === "query" && ["node", "neighbors", "impact", "anchors", "spec", "context"].includes(subject)) {
-    const selection = subject === "spec" ? "" : " --id <model-node-id>";
+    const selection = subject === "spec" ? " [--id <model-id>]" : " --id <model-node-id>";
     const history = subject === "context" ? "" : " [--history]";
     lines[0] = `Syntax: ddduck query ${subject}${selection}${subject === "context" ? " [--id <model-node-id> ...]" : ""} [--root <product-root>]${history} [--json]`;
     if (subject === "context") {

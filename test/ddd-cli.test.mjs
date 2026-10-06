@@ -126,11 +126,16 @@ test("create help shows only the selected subject syntax and a runnable example"
 });
 
 test("query subject help narrows the operation while preserving its JSON contract", () => {
-  const result = runDdd(["query", "node", "--help"]);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Syntax: ddduck query node --id/);
-  assert.match(result.stdout, /Example: ddduck query node --id/);
-  assert.match(result.stdout, /output is always JSON/);
+  for (const [subject, syntax] of [
+    ["node", /Syntax: ddduck query node --id/],
+    ["spec", /Syntax: ddduck query spec \[--id <model-id>\]/],
+  ]) {
+    const result = runDdd(["query", subject, "--help"]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, syntax);
+    assert.match(result.stdout, new RegExp(`Example: ddduck query ${subject}`));
+    assert.match(result.stdout, /output is always JSON/);
+  }
 });
 
 test("install skill detects repository root from nested directories and keeps explicit overrides", () => {
