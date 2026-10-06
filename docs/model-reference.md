@@ -67,7 +67,7 @@ purpose: Describe the concept responsibility.
 ### Relationship
 
 Required: `from`, `to`, `relationshipType`, `mode`, and `ownedBy` (a Domain ID). Optional:
-`description`, `constraints`, and `decisions`.
+`name` (a descriptive label), `description`, `constraints`, and `decisions`.
 
 ### UseCase
 
@@ -85,7 +85,9 @@ Required: `ownerDomain`, `name`, and `operationKind` (`command` or `query`). Opt
 Required: `ownerDomain`, `classification` (`invariant` or `acceptance-criterion`), `statement`,
 and `status` (`active`, `split`, or `retired`). A split or retired Guarantee also requires a
 `lifecycleDecision`; a split Guarantee names active `successors`. Optional `ownershipHistory`
-records former owning Domains. Evidence anchors are also supported.
+records former owning Domains. Optional `name` provides a short descriptive title;
+`statement` remains the full normative text. Existing Guarantees without a name remain valid.
+Evidence anchors are also supported.
 
 Evidence anchors contain a product-relative `path`, `anchor`, and `role` (`source`, `decision`,
 or `verification`). The path must resolve to a regular file inside the selected product root.

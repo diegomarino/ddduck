@@ -1,6 +1,7 @@
 schemaVersion: "1"
 kind: Guarantee
 id: TRACEABILITY-INV-01
+name: Review Evidence Boundaries
 model: model:ddduck
 ownerDomain: domain:traceability
 classification: invariant

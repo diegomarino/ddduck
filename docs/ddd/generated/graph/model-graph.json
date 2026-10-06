@@ -9,7 +9,7 @@
     {
       "id": "AUTHORING-INV-01",
       "kind": "Guarantee",
-      "name": null,
+      "name": "Explicit Acceptance of Product Facts",
       "ownershipKind": null,
       "purpose": "Unresolved proposals remain outside canonical product facts until their meaning is explicitly accepted; observed implementation alone does not establish accepted product intent.",
       "model": "model:ddduck",
@@ -18,7 +18,7 @@
     {
       "id": "AUTHORING-INV-02",
       "kind": "Guarantee",
-      "name": null,
+      "name": "Planning Context Boundaries",
       "ownershipKind": null,
       "purpose": "Selected canonical context constrains a planning brief but does not supply its delivery intent, scope, alternatives, tasks, or approval.",
       "model": "model:ddduck",
@@ -387,7 +387,7 @@
     {
       "id": "TRACEABILITY-AC-01",
       "kind": "Guarantee",
-      "name": null,
+      "name": "Canonical Change Reporting",
       "ownershipKind": null,
       "purpose": "Comparing valid roots of the same Model reports added, removed, changed, and relocated canonical records by stable ID, including ownership changes and removed Guarantees.",
       "model": "model:ddduck",
@@ -396,7 +396,7 @@
     {
       "id": "TRACEABILITY-INV-01",
       "kind": "Guarantee",
-      "name": null,
+      "name": "Review Evidence Boundaries",
       "ownershipKind": null,
       "purpose": "Structural differences and graph relationships are review evidence; they do not establish semantic acceptance, causal impact, or verified runtime behavior.",
       "model": "model:ddduck",

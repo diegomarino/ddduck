@@ -84,6 +84,8 @@ export function renderHelp(command, subject) {
     undefined: [
       "Usage: ddduck <command> [options]",
       "Commands: init, check, generate, query, diff, install, update, create, move, split, retire.",
+      "Optional: export archify (requires install archify); doctor archify reports installation status.",
+
       "Flags: --version (-v) prints the installed ddduck version.",
       "Run `ddduck <command> --help` for command usage.",
     ],
@@ -149,11 +151,30 @@ export function renderHelp(command, subject) {
     ],
     install: [
       "Syntax: ddduck install skill [--repo <repository-root>] [--yes]",
-      "Defaults: --repo is the nearest Git repository root, or the current directory outside Git; the confirmation prompt is asked unless --yes is passed.",
-      "Writes: nothing directly; it runs `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck>/skills --skill '*' -y` in --repo, and the skills CLI installs every bundled skill into that project (canonical copy plus per-agent symlinks) and owns its own state.",
-      "Success output: the exact delegated command on its own line, the confirmation prompt, then the streamed output of the delegated command.",
+      "Syntax: ddduck install archify [--repo <repository-root>] [--yes] [--version <integration-version>]",
+      "Archify: experimental optional runtime, pinned source and SHA-256 verification; install prints the export command. Re-running repairs the qualified version; no automatic upgrades.",
+      "Defaults: --repo is the nearest Git repository root, or the current directory outside Git; both subjects prompt unless --yes is passed.",
+      "Writes: skill runs `npx --yes '--package=skills@^1.7.0' -- skills add <ddduck>/skills --skill '*' -y` in --repo; the skills CLI owns its installation state. Archify writes a verified repository-local runtime and lock in .ddduck/tools/archify.",
+      "Success output: skill prints the delegated command and streams its output; Archify prints its qualified version and the next export command.",
+
       "Exit status: 0 on a successful delegated install or help; 1 when the confirmation is declined (nothing installed), when input is invalid, or when npx cannot be started; otherwise the exit status of the delegated command.",
       "JSON: unavailable; --json is not accepted.",
+    ],
+    export: [
+      "Syntax: ddduck export archify [--root <product-root>] [--out <directory>] [--open] [--json]",
+      "Defaults: resolved product root; output is <product-root>/.ddduck/exports/archify; requires ddduck install archify.",
+      "Writes: a staged HTML atlas with complete, Model/sublevel and Domain views; source and canonical generated views are unchanged.",
+      "Success output: atlas path; --open opens it in the default browser.",
+      "Exit status: 0 on success or help; 2 for a busy product; 1 on missing/corrupt runtime, invalid source or output failure. Missing runtime downloads nothing.",
+      "JSON: --json emits one result with root, output, index and integration identity.",
+    ],
+    doctor: [
+      "Syntax: ddduck doctor archify [--repo <repository-root>] [--json]",
+      "Defaults: enclosing repository; checks the qualified Archify runtime offline without loading it.",
+      "Writes: nothing.",
+      "Success output: installation status, expected integration/upstream revision and repair command when needed.",
+      "Exit status: 0 if ready or help; 1 if missing, corrupted, incompatible or input is invalid.",
+      "JSON: --json emits one status object with integration identity and runtime path.",
     ],
     create: [
       "Syntax: ddduck create guarantee --origin <origin> --classification <invariant|acceptance-criterion> --owner <domain-id> --statement <text> [--root <product-root>] [--json]",

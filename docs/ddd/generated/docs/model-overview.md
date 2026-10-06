@@ -23,8 +23,8 @@ Own the workflow for creating, reviewing, revising, and retiring model nodes.
 
 #### Active guarantees
 
-- `AUTHORING-INV-01` - Unresolved proposals remain outside canonical product facts until their meaning is explicitly accepted; observed implementation alone does not establish accepted product intent.
-- `AUTHORING-INV-02` - Selected canonical context constrains a planning brief but does not supply its delivery intent, scope, alternatives, tasks, or approval.
+- `AUTHORING-INV-01` - Explicit Acceptance of Product Facts
+- `AUTHORING-INV-02` - Planning Context Boundaries
 
 ### Documentation (`domain:documentation`)
 
@@ -108,8 +108,8 @@ Own the rules that prove model completeness, coherence, and guarantee lifecycle 
 
 #### Active guarantees
 
-- `TRACEABILITY-AC-01` - Comparing valid roots of the same Model reports added, removed, changed, and relocated canonical records by stable ID, including ownership changes and removed Guarantees.
-- `TRACEABILITY-INV-01` - Structural differences and graph relationships are review evidence; they do not establish semantic acceptance, causal impact, or verified runtime behavior.
+- `TRACEABILITY-AC-01` - Canonical Change Reporting
+- `TRACEABILITY-INV-01` - Review Evidence Boundaries
 
 ### Visualization Export (`domain:visualization-export`)
 

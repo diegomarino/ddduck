@@ -10,3 +10,6 @@ test/evals/*.result.json
 # Third-party-formatted artifacts; excluded from lint/format gates.
 docs/audits/
 docs/superpowers/
+
+# Generated Archify viewer bytes and their hash-bound study receipts.
+.archify/

@@ -1,6 +1,7 @@
 schemaVersion: "1"
 kind: Guarantee
 id: AUTHORING-INV-02
+name: Planning Context Boundaries
 model: model:ddduck
 ownerDomain: domain:authoring-workflow
 classification: invariant

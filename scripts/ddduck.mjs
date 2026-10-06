@@ -60,6 +60,8 @@ const topLevelCommands = [
   "query",
   "diff",
   "install",
+  "export",
+  "doctor",
   "update",
   "create",
   "move",
@@ -101,6 +103,11 @@ async function run(args) {
     reportVersion(commandArgs);
     return;
   }
+  if (["export", "doctor"].includes(command)) {
+    const { runArchifyCommand } = await import("./lib/archify-command.mjs");
+    await runArchifyCommand(command, commandArgs);
+    return;
+  }
   if (command === "update") {
     const { options } = parseCommandArgs(commandArgs, { options: { yes: { value: false } } });
     updateCli({ frameworkRoot, assumeYes: options.yes });
@@ -134,7 +141,7 @@ async function run(args) {
     return;
   }
   if (command === "install") {
-    install(commandArgs);
+    await install(commandArgs);
     return;
   }
   if (command === "create" && ["domain", "concept", "use-case"].includes(commandArgs[0])) {
@@ -171,11 +178,17 @@ function readPackageManifest() {
  * @param {string[]} args - Arguments after the `install` command word.
  * @returns {void}
  */
-function install(args) {
+async function install(args) {
   const { positionals, options } = parseCommandArgs(args, {
     positionals: { min: 1, max: 1, syntax: "ddduck install skill [--repo <repository-root>] [--yes]" },
-    options: { repo: { value: true }, yes: { value: false } },
+    options: { repo: { value: true }, yes: { value: false }, version: { value: true } },
   });
+  if (positionals[0] === "archify") {
+    const { runArchifyCommand } = await import("./lib/archify-command.mjs");
+    await runArchifyCommand("install", args);
+    return;
+  }
+  if (options.version !== undefined) throw new CliUsageError("Unknown option --version");
   if (positionals[0] !== "skill") {
     throw new CliUsageError(`install requires the subject skill, not ${JSON.stringify(positionals[0])}`);
   }
