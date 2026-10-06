@@ -22,6 +22,8 @@ Valid anchors prove that declared text exists. Declared audit verdicts remain as
 
 Reuse an existing proposal or brief. Capture the actor and problem, success and refusal examples, evidence provenance, accepted constraints, alternatives, open conflicts, affected IDs, decision and rationale, and receiving plan. Omit sections that add no decision value.
 
+When scenarios leave a material gap, reconstruct the actor, action, and result sequence in that brief before fixing boundaries. Cite evidence for each step; mark conflicting accounts and unknown causes explicitly. An agent-generated sequence is a proposal, not stakeholder agreement or a facilitated workshop.
+
 - `Observed`: inspected behavior, not endorsement.
 - `Accepted`: intended behavior with identified authority; it may be unimplemented.
 - `Open`: unresolved meaning that stays out of canonical YAML.
@@ -29,14 +31,20 @@ Reuse an existing proposal or brief. Capture the actor and problem, success and 
 
 These labels are prose, not schema fields or Guarantee lifecycle states. Independent accepted obligations may be modeled while another question remains open. Zero canonical change is correct when existing obligations suffice, the proposal remains unresolved, or the change is implementation-only. Create an ADR only for a durable consequential decision worth maintaining.
 
+**Example (fictional):** Code lets any signed-in user change a billing email, and an inspected test expects success for a non-owner. An accepted requirement and active Guarantee reserve that action for the billing account owner. Record the contradiction; preserve the accepted obligation until an authorized decision changes it. The test expectation establishes neither accepted authorization nor that the test was executed.
+
 ## Model by meaning
 
-- Domain: a distinct product responsibility, not a package or screen.
+- Domain: a distinct product responsibility, not a package or screen. It does not automatically identify a subdomain, bounded context, or deployable.
 - Concept: vocabulary needed to reason about a decision, not every noun or class.
 - Guarantee: an observable obligation or invariant, not an aspiration.
 - UseCase: an actor goal and the obligations it requires, preserves, or establishes, not an implementation task list.
-- Relationship: an explicit connection worth reviewing, not proof of causation.
+- Relationship: an explicit connection worth reviewing, not proof of causation. For cross-domain connections, use `description` and `constraints` to explain what crosses the boundary and which party constrains the other when supported. Direction and record ownership alone do not establish authority; keep unknown collaboration patterns in prose.
 - Interface: optional; add one only when an external behavioral boundary matters.
+
+**Review ambiguous vocabulary:** When a term appears across domains, compare the existing Concepts' purposes, owners, and associated obligations. Walk one concrete actor scenario: does the term identify the same thing and permit the same actions in each domain? Record differences with evidence in the existing brief. Matching names alone justify neither merging Concepts nor splitting Domains. Keep unresolved meanings and boundary questions in prose; preserve existing IDs until a supported semantic decision requires a change.
+
+**Example (fictional):** Identity's Account Concept identifies a login principal; Billing's Account Concept tracks payment obligations. A customer has two logins and one billing account. Disabling one login blocks sign-in but leaves the payment obligation intact. Preserve the distinct Concepts; the shared name establishes neither identity equivalence nor billing authority, which remains open without an accepted rule.
 
 Prefer the smallest coherent model change. Preserve identity and history. Never silently delete or reuse a Guarantee ID.
 
