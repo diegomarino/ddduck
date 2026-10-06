@@ -67,6 +67,11 @@ Install the CLI from npm (requires Node.js 22 or newer):
 npm install -g ddduck
 ```
 
+For a global npm installation, `ddduck update` shows the installed and latest stable
+versions and confirms the exact npm command before updating. Use `ddduck update --yes`
+to skip confirmation. Local dependencies and linked checkouts use their package manager
+or Git instead; see [the update contract](docs/cli.md#update).
+
 Or run it from a local checkout for contributing (`npm install`, then `npm link` or
 `node <checkout>/scripts/ddduck.mjs` — see
 [Install ddduck](docs/getting-started.md#install-ddduck)). Create a product root with:

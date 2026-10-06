@@ -30,6 +30,22 @@ or skip linking and invoke the CLI directly from the checkout:
 node <checkout>/scripts/ddduck.mjs --help
 ```
 
+## Update the global CLI
+
+Run `ddduck update` for a CLI installed globally with npm. It displays the installed and
+available stable release versions and the exact npm command, then asks for confirmation.
+Use `ddduck update --yes` to accept the update without prompting. Already-current or newer
+installations are left alone.
+
+The command verifies that npm's global package directory contains the executable's own
+package, pins the target prefix and displayed version, requires compatible Node.js engines,
+and verifies the installed CLI after npm finishes. Local dependencies, npm-linked checkouts,
+and prerelease builds require their package manager or Git instead. Network, permissions,
+and installation errors are reported without claiming a verified update.
+
+Installed agent skills are project copies. After updating the CLI, refresh a project's skill
+separately with `ddduck install skill` from that project directory.
+
 ## Create the first product
 
 Run the complete Bash block from an empty working directory with `ddduck` on `PATH`, normally

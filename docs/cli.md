@@ -84,6 +84,33 @@ note naming the validated root so an implicitly resolved (for example config-pin
 validated invisibly. Successful product mutations print one concise result line, or one JSON result
 object when `--json` is available.
 
+## `update`
+
+```text
+ddduck update [--yes]
+```
+
+Updates the executing CLI only when it is the actual npm global installation. It resolves
+the global prefix and package directory through npm, refuses a linked checkout or a different
+installation, and reads the latest stable release version from the configured npm registry.
+It displays the installed and available versions, leaves an equal or newer installed release
+alone, and prints the exact command before asking `[y/n]`. `--yes` skips this confirmation;
+closed input declines it. `--json` and `--force` are not accepted.
+
+The installation command pins the verified prefix and displayed version, requires compatible
+Node.js engines, and disables npm's configured force override. After npm succeeds, the command
+executes the updated package's CLI with `--version --json` and verifies its package name and
+version. Only then does it report success and remind you to refresh project skills separately
+with `ddduck install skill`. It does not modify product models or install agent skills.
+
+Global stable releases are supported on macOS and Linux. Local dependencies, linked checkouts,
+other installation methods, and prerelease builds should be updated through their package
+manager or Git. A failed installation may require repairing the global package with npm;
+the command does not attempt an automatic rollback.
+
+Exit status is 0 when already current/newer or after a verified update; 1 on invalid input,
+unsupported installation/version, declined confirmation, npm failure, or failed verification.
+
 ## `init`
 
 ```text

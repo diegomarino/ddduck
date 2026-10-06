@@ -2,7 +2,7 @@
 
 /**
  * Entry point for the `ddduck` CLI (the package bin). Dispatches the commands
- * init, check, generate, query, install, --version, and the guarantee lifecycle
+ * init, check, generate, query, install, update, --version, and the guarantee lifecycle
  * commands create/move/split/retire. Mutations run through the locked, staged operation
  * runner in lib/product-operation.mjs; init publishes a fresh product root via
  * PID-stamped staging; check delegates to check-model.mjs plus the generated
@@ -42,6 +42,7 @@ import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveInitDestination, resolveProductRoot } from "./lib/product-root-resolver.mjs";
 import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
 import { delegateSkillInstall } from "./lib/skill-delegation.mjs";
+import { updateCli } from "./lib/update-cli.mjs";
 import { runQuery } from "./query-model.mjs";
 import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
 import { buildAuthoringPlan } from "./lib/product-authoring.mjs";
@@ -57,6 +58,7 @@ const topLevelCommands = [
   "query",
   "diff",
   "install",
+  "update",
   "create",
   "move",
   "split",
@@ -95,6 +97,11 @@ function run(args) {
   }
   if (command === "--version") {
     reportVersion(commandArgs);
+    return;
+  }
+  if (command === "update") {
+    const { options } = parseCommandArgs(commandArgs, { options: { yes: { value: false } } });
+    updateCli({ frameworkRoot, assumeYes: options.yes });
     return;
   }
   if (command === "init") {
