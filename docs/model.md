@@ -44,6 +44,22 @@ one `Model` node; it does **not** declare `model`. Its `domains`, `useCases`,
 | `DomainInterface` | Declares a command or query boundary and its guarantees.              |
 | `Guarantee`       | States an invariant or acceptance criterion with lifecycle state.     |
 
+### Domain boundaries
+
+A ddduck `Domain` owns a distinct product responsibility, expressed through its purpose,
+Concepts, interfaces, and Guarantees. It does not automatically correspond to a DDD
+subdomain (a part of the problem space), a bounded context (the scope of a particular model
+and language), a package, or a deployable unit. Those boundaries may align when evidence
+supports that choice; the node kind alone establishes none of them.
+
+Choose boundaries from differences in meaning and responsibility, using concrete actor
+scenarios and accepted obligations. Shared names do not establish shared meanings, and
+separate packages or services do not establish separate product responsibilities. Keep
+unresolved boundaries in the existing brief until there is enough evidence or an accepted
+decision to model them.
+
+### Guarantee lifecycle
+
 Guarantee IDs are stable. An active Guarantee can be moved, split into existing active
 successors, or retired only when an ADR authorizes that lifecycle transition. Use cases and
 interfaces cannot retain references to non-effective Guarantees.
@@ -56,6 +72,15 @@ flowchart LR
   Reference[Active UseCase and DomainInterface references] -. block .-> Split
   Reference -. block .-> Retired
 ```
+
+### Boundary relationships
+
+For a cross-domain `Relationship`, use `description` to explain what crosses the boundary
+and `constraints` to state supported obligations or limits, including which party constrains
+the other when known. Cite accepted decisions through `decisions` where appropriate.
+The `from`/`to` direction and `ownedBy` record ownership do not by themselves establish
+business authority or organizational influence. Keep unknown collaboration patterns in
+the brief rather than guessing them from a call graph or relationship name.
 
 ## Decisions and evidence
 
