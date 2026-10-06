@@ -107,7 +107,7 @@ function declinedConfirmation() {
  * answer, which declines.
  * @returns {string} The trimmed answer (empty at end of input).
  */
-function readAnswer() {
+export function readAnswer() {
   const buffer = Buffer.alloc(1);
   let answer = "";
   for (;;) {

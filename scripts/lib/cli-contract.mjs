@@ -83,7 +83,7 @@ export function renderHelp(command, subject) {
   const usage = {
     undefined: [
       "Usage: ddduck <command> [options]",
-      "Commands: init, check, generate, query, diff, install, create, move, split, retire.",
+      "Commands: init, check, generate, query, diff, install, update, create, move, split, retire.",
       "Flags: --version (-v) prints the installed ddduck version.",
       "Run `ddduck <command> --help` for command usage.",
     ],
@@ -94,6 +94,15 @@ export function renderHelp(command, subject) {
       "Success output: one text line naming the package and its installed version.",
       "Exit status: 0 on success or help; 1 on invalid input.",
       "JSON: --json emits one object with name and version.",
+    ],
+    update: [
+      "Syntax: ddduck update [--yes]",
+      "Defaults: show installed and latest stable versions; confirm the exact npm command unless --yes is passed; never downgrade a newer installation.",
+      "Writes: delegates to npm to update only this global ddduck installation, using its verified prefix and the displayed version; Node compatibility is required. Local dependencies and npm-linked checkouts require their own package manager or Git.",
+      "Success output: an already-current/newer notice, or the verified updated CLI version and a reminder to refresh the agent skill separately.",
+      "Exit status: 0 when current or successfully verified; 1 on declined confirmation, unsupported installation/version, npm failure, or failed verification.",
+      "JSON: unavailable; --json is not accepted.",
+      "Example: ddduck update --yes",
     ],
     init: [
       "Syntax: ddduck init [destination] [--name <name>] [--id model:<product-id>] [--yes] [--json]",
