@@ -485,6 +485,12 @@ The passport displays the full node description in a wrapping text block before
 the relationship list, outside the metadata chips. Long descriptions can be
 scrolled within that block; canonical IDs remain compact metadata.
 
+Diagram cards show a short title and the canonical ID, with the full description
+reserved for the passport. A Guarantee without `name` shows only its ID on the
+card; add an optional `name` for a readable title and keep `statement` unchanged.
+Each view's JSON components expose `canonicalId`, `title`, and `description`,
+derived from the existing model fields without changing the source format.
+
 ### Publishing the framework model
 
 This repository's [Model atlas workflow](../.github/workflows/pages.yml) exports

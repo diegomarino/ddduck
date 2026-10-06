@@ -74,7 +74,7 @@ test("guarantees and reference arrows use a non-error palette", async () => {
   assert.ok(!rendered.svg.includes("var(--security-stroke)"));
 });
 
-test("unnamed guarantees display their canonical statement as visible text", async () => {
+test("unnamed guarantees keep cards compact and retain their full statement in the passport", async () => {
   const graph = load("examples/reminders/ddd/generated/graph/model-graph.json");
   const guarantee = graph.nodes.find((node) => node.kind === "Guarantee" && !node.name);
   const rendered = await renderView(projectViews(graph)[0], graph);
@@ -82,18 +82,29 @@ test("unnamed guarantees display their canonical statement as visible text", asy
   const node = rendered.svg.match(new RegExp(`<g id="node-n${index}"[\\s\\S]*?</g>`))[0];
   const visibleText = [...node.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]).join(" ");
   assert.ok(visibleText.includes(guarantee.id));
-  assert.ok(visibleText.includes(guarantee.purpose));
+  assert.ok(!visibleText.includes(guarantee.purpose));
+  assert.ok(node.includes(`data-node-context="${guarantee.purpose}"`));
+  assert.deepEqual(rendered.components[index], {
+    id: `n${index}`,
+    canonicalId: guarantee.id,
+    semantic_kind: "Guarantee",
+    title: guarantee.id,
+    description: guarantee.purpose,
+  });
 });
 
-test("named guarantees show only their title while retaining ID and statement in their passport", async () => {
+test("named guarantees show their title and ID while retaining the full statement in the passport", async () => {
   const graph = load("docs/ddd/generated/graph/model-graph.json");
   const guarantee = graph.nodes.find((node) => node.kind === "Guarantee" && node.name);
   const rendered = await renderView(projectViews(graph)[0], graph);
   const node = rendered.svg.match(new RegExp(`<g id="node-n${graph.nodes.indexOf(guarantee)}"[\\s\\S]*?</g>`))[0];
   const visible = [...node.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]).join(" ");
   assert.ok(visible.includes(guarantee.name));
-  assert.ok(!visible.includes(guarantee.id));
+  assert.ok(visible.includes(guarantee.id));
   assert.ok(node.includes(`data-node-tag="${guarantee.id}"`));
   assert.ok(!visible.includes(guarantee.purpose));
   assert.ok(node.includes(guarantee.purpose));
+  const component = rendered.components[graph.nodes.indexOf(guarantee)];
+  assert.equal(component.title, guarantee.name);
+  assert.equal(component.description, guarantee.purpose);
 });

@@ -120,21 +120,23 @@ export async function renderView(view, graph) {
   const alias = new Map(graph.nodes.map((n, i) => [n.id, `n${i}`]));
   const included = new Set(view.nodes.map((n) => n.id));
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
-  const labels = new Map(
+  const presentation = new Map(
     view.nodes.map((n) => {
       const relation = graph.edges.find((e) => e.kind === "relationship" && e.source === n.id);
-      if (n.kind === "Guarantee")
-        return [n.id, n.name ? wrap(n.name) : [...wrap(n.id), ...(n.purpose ? wrap(n.purpose) : [])]];
+      const title = n.name ?? (relation ? `${relation.label} → ${byId.get(relation.to).name ?? relation.to}` : n.id);
       return [
         n.id,
-        wrap(n.name ?? (relation ? `${relation.label} → ${byId.get(relation.to).name ?? relation.to}` : n.id)),
+        { title, description: n.purpose ?? "", lines: wrap(title), idLines: title === n.id ? [] : wrap(n.id, 32) },
       ];
     }),
   );
   const sizes = new Map(
     view.nodes.map((n) => [
       n.id,
-      [n.kind === "Model" || n.kind === "Domain" ? 230 : 210, Math.max(78, 40 + labels.get(n.id).length * 18)],
+      [
+        n.kind === "Model" || n.kind === "Domain" ? 230 : 210,
+        Math.max(78, 40 + presentation.get(n.id).lines.length * 18 + presentation.get(n.id).idLines.length * 14),
+      ],
     ]),
   );
   const connections = view.edges.flatMap((e, i) => {
@@ -226,7 +228,8 @@ export async function renderView(view, graph) {
       x = cx - w / 2,
       y = cy - h / 2;
     const context = view.context.includes(n.id);
-    const attrs = `id="node-${alias.get(n.id)}" data-node-id="${alias.get(n.id)}" data-node-label="${esc(n.name ?? n.id)}" data-node-kind="${n.kind}" data-node-tag="${esc(n.id)}" data-node-context="${esc(n.purpose)}" data-node-sublabel="${esc(context ? "External context" : n.ownerDomain ? (byId.get(n.ownerDomain).name ?? n.ownerDomain) : "Model scope")}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(n.name ?? n.id)}"`;
+    const { title, description, lines, idLines } = presentation.get(n.id);
+    const attrs = `id="node-${alias.get(n.id)}" data-node-id="${alias.get(n.id)}" data-node-label="${esc(title)}" data-node-kind="${n.kind}" data-node-tag="${esc(n.id)}" data-node-context="${esc(description)}" data-node-sublabel="${esc(context ? "External context" : n.ownerDomain ? (byId.get(n.ownerDomain).name ?? n.ownerDomain) : "Model scope")}" tabindex="0" role="button" aria-pressed="false" aria-label="${esc(title)}"`;
     let shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${n.kind === "Relationship" ? h / 2 : n.kind === "Model" ? 22 : 10}" class="c-${paint[n.kind]}" stroke-width="1.6"/>`;
     if (n.kind === "Guarantee")
       shape = `<path d="M${x + 12} ${y}H${x + w - 12}L${x + w} ${y + 12}V${y + h - 12}L${x + w - 12} ${y + h}H${x + 12}L${x} ${y + h - 12}V${y + 12}Z" class="c-${paint[n.kind]}" stroke-width="1.6"/>`;
@@ -234,11 +237,15 @@ export async function renderView(view, graph) {
       shape += `<path d="M${x + 12} ${y + 8}H${x + w - 12}" class="c-${paint[n.kind]}" fill="none" stroke-width="4"/>`;
     if (n.kind === "DomainInterface")
       shape += `<path d="M${x + 8} ${y + 12}H${x + 18}V${y + h - 12}H${x + 8}" fill="none" stroke="var(--text-muted)" stroke-width="3"/>`;
-    nodes += `<g ${attrs} data-context="${context}"><title>${esc(`${n.id} · ${n.purpose ?? ""}`)}</title>${shape}<text x="${x + 16}" y="${y + 20}" class="t-muted" font-size="10">${n.kind}${context ? " · context" : ""}</text>${labels
-      .get(n.id)
+    nodes += `<g ${attrs} data-context="${context}"><title>${esc(`${n.id} · ${description}`)}</title>${shape}<text x="${x + 16}" y="${y + 20}" class="t-muted" font-size="10">${n.kind}${context ? " · context" : ""}</text>${lines
       .map(
         (line, i) =>
           `<text data-node-label="" x="${x + 16}" y="${y + 43 + i * 18}" class="t-primary" font-size="14">${esc(line)}</text>`,
+      )
+      .join("")}${idLines
+      .map(
+        (line, i) =>
+          `<text x="${x + 16}" y="${y + 43 + lines.length * 18 + i * 14}" class="t-muted" font-size="10">${esc(line)}</text>`,
       )
       .join("")}</g>`;
   }
@@ -249,7 +256,13 @@ export async function renderView(view, graph) {
     dot: dot.join("\n"),
     width: width + margin * 2,
     height: height + margin * 2,
-    components: view.nodes.map((n) => ({ id: alias.get(n.id), semantic_kind: n.kind })),
+    components: view.nodes.map((n) => ({
+      id: alias.get(n.id),
+      canonicalId: n.id,
+      semantic_kind: n.kind,
+      title: presentation.get(n.id).title,
+      description: presentation.get(n.id).description,
+    })),
   };
 }
 function adaptPassport(template) {
