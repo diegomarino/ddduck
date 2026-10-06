@@ -6,6 +6,13 @@ contracts live in [the CLI reference](cli.md).
 
 ## Working gate
 
+`npm install` installs the local Husky `commit-msg` hook. It validates Conventional
+Commits with optional scopes and a 100-character header limit; subject case and
+body/footer line lengths are unrestricted. Merge, revert, and fixup messages keep
+commitlint's default exceptions. Husky installation is skipped in CI, production,
+during packaging/publishing, and when `HUSKY=0` is set. After `npm ci --ignore-scripts`, run `npm run prepare`
+to enable the hook locally.
+
 `npm run check` is the gate that must pass before committing. It runs, in order:
 
 - `check:model` — validates the canonical self-model at `docs/ddd`
