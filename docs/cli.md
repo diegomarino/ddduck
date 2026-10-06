@@ -477,8 +477,10 @@ provide SVG and PNG export. Publish the entire output directory so its relative
 HTML links remain valid.
 
 This is a static atlas: the grouped complete view does not collapse groups or
-replace them interactively with aggregated nodes. Model summaries and Domain
-details are separate views. Release packaging and a supported-version upgrade
+replace them interactively with aggregated nodes. The complete view uses a
+compact two-dimensional layout with non-overlapping cards and Domain groups;
+Model summaries and Domain details retain their hierarchical layout as separate
+views. Release packaging and a supported-version upgrade
 policy remain follow-up work before advertising a stable integration.
 
 The passport displays the full node description in a wrapping text block before

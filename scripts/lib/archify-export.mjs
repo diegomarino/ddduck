@@ -153,9 +153,10 @@ export async function renderView(view, graph) {
     return `${alias.get(n.id)} [label="",width=${w / 72},height=${h / 72}];`;
   });
   const clustered = new Set(view.groups.flatMap((g) => g.members));
+  const compact = view.id === "complete";
   const dot = [
     "digraph D {",
-    'graph [rankdir=LR, nodesep=0.35, ranksep=0.8, compound=true, splines=spline, pad=0.35, bgcolor="transparent"];',
+    `graph [${compact ? "layout=fdp, overlap=false, " : ""}rankdir=LR, nodesep=0.35, ranksep=0.8, compound=true, splines=spline, pad=0.35, bgcolor="transparent"];`,
     "node [shape=box, fixedsize=true];",
     'edge [fontname="Arial",fontsize=12,arrowsize=0.7];',
   ];
@@ -172,7 +173,7 @@ export async function renderView(view, graph) {
       `${alias.get(e.from)} -> ${alias.get(e.to)} [id=${quote(e.id)},label=${quote(e.label)},weight=${e.kind === "owns" ? 3 : 1}];`,
     );
   dot.push("}");
-  const layout = JSON.parse(engine.layout(dot.join("\n"), "json", "dot"));
+  const layout = JSON.parse(engine.layout(dot.join("\n"), "json", compact ? "fdp" : "dot"));
   const [, , width, height] = layout.bb.split(",").map(Number),
     margin = 28;
   const point = ([x, y]) => [x + margin, height - y + margin];

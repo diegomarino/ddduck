@@ -3,6 +3,34 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { projectViews, renderView } from "../scripts/lib/archify-export.mjs";
 const load = (p) => JSON.parse(readFileSync(p, "utf8"));
+test("complete models distribute sibling nodes across both dimensions without overlapping cards", async () => {
+  const graph = { nodes: [{ id: "m", kind: "Model", name: "Branched model" }], edges: [] };
+  for (let d = 0; d < 4; d++) {
+    const domain = `domain:${d}`;
+    graph.nodes.push({ id: domain, kind: "Domain", name: `Domain ${d}` });
+    graph.edges.push({ id: `domain-edge-${d}`, from: "m", to: domain, kind: "owns", label: "owns" });
+    for (let c = 0; c < 8; c++) {
+      const id = `concept:${d}-${c}`;
+      graph.nodes.push({ id, kind: "Concept", name: `Concept ${c}`, ownerDomain: domain });
+      graph.edges.push({ id: `concept-edge-${d}-${c}`, from: domain, to: id, kind: "owns", label: "owns" });
+    }
+  }
+  const rendered = await renderView(projectViews(graph)[0], graph);
+  assert.ok(rendered.height / rendered.width < 2, "Complete model should not form a tall column");
+  assert.ok(rendered.width / rendered.height < 2, "Complete model should not form a wide strip");
+  const cards = [...rendered.svg.matchAll(/<g id="node-[\s\S]*?<\/g>/g)].map(([node]) => {
+    const [, x, y, width, height] = node.match(/<rect x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/);
+    return [x, y, width, height].map(Number);
+  });
+  assert.equal(cards.length, graph.nodes.length);
+  for (let i = 0; i < cards.length; i++) {
+    for (let j = i + 1; j < cards.length; j++) {
+      const [x, y, w, h] = cards[i],
+        [otherX, otherY, otherW, otherH] = cards[j];
+      assert.ok(x + w <= otherX || otherX + otherW <= x || y + h <= otherY || otherY + otherH <= y);
+    }
+  }
+});
 for (const file of [
   "docs/ddd/generated/graph/model-graph.json",
   "examples/reminders/ddd/generated/graph/model-graph.json",
