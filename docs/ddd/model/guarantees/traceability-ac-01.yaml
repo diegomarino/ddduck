@@ -1,6 +1,7 @@
 schemaVersion: "1"
 kind: Guarantee
 id: TRACEABILITY-AC-01
+name: Canonical Change Reporting
 model: model:ddduck
 ownerDomain: domain:traceability
 classification: acceptance-criterion

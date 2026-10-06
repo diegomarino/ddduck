@@ -5,6 +5,11 @@
 # Node
 node_modules/
 *.log
+**/.ddduck/tools/archify/runtime/
+**/.ddduck/exports/
+.archify/
+/docs/research/archify-*.md
+/experiments/archify/
 
 # npm packaging / release tooling
 .npm-cache/

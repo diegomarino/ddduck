@@ -410,3 +410,95 @@ Claude: /update-ddduck-specs
 The skill defaults to plan-only; changing a product model requires explicit apply authorization.
 Its workflow behavior is defined by the installed skill bundle (see its packaged
 [canonical entrypoint](../skills/update-ddduck-specs/SKILL.md)).
+
+## Optional Archify integration (experimental)
+
+```text
+ddduck install archify [--repo <repository-root>] [--yes] [--version <integration-version>]
+ddduck doctor archify [--repo <repository-root>] [--json]
+ddduck export archify [--root <product-root>] [--out <directory>] [--open] [--json]
+```
+
+These commands are always advertised by `--help`, including before installation.
+Help does not read `.ddduck/config.json` or load an installed runtime. Existing
+commands work independently of Archify. After installation, the installer prints
+`Next: ddduck export archify --open`.
+
+This worktree trial downloads only the qualified source files from upstream commit
+`73aaa0696e8f72c232ea710e6fa94fd953f3e773`, whose package declares version 3.0.1.
+Integration version `0.1.0-experimental` identifies this ddduck adapter, separately
+from the upstream version. Each file is checked against a bundled SHA-256 manifest
+before installation and before export. No installation scripts run. The upstream
+MIT license is included. This trial does not use a published npm integration
+package or a globally installed agent skill.
+
+The runtime lives at `<repository>/.ddduck/tools/archify/runtime/`, with its pin in
+the adjacent `lock.json`. Commit the lock and ignore the runtime directory:
+
+```gitignore
+**/.ddduck/tools/archify/runtime/
+**/.ddduck/exports/
+```
+
+`--repo` defaults to the enclosing Git repository, or the current directory without
+Git. The directory must already exist. Installation asks for confirmation unless
+`--yes` is passed. Re-running installation reuses a valid copy offline, or repairs
+corrupted files using the same qualified revision. A failed download leaves the
+previous installation intact. Only the integration version qualified by this
+ddduck is accepted by `--version`; unsupported versions are rejected. An unrelated
+directory or incompatible lock is never replaced automatically.
+
+Interrupted installation/export trials retain their lock and any staging recovery
+directory. The next attempt reports the recorded owner PID and lock path. After
+confirming the owner has exited, preserve recovery directories and remove only the
+reported lock before retrying. Automatic stale-lock reclamation is deferred.
+
+`doctor archify` checks installation and integrity offline without executing the
+runtime. It exits 0 when ready, 1 otherwise, and offers the install command for a
+missing or corrupted installation. `--json` returns a single status object.
+
+Export resolves and validates the canonical product source, builds its graph in
+staging, and produces a complete grouped view, a Model overview with separate
+sublevel diagrams, and individual Domain views with external context. It does not
+require fresh canonical generated views or regenerate them. A missing or corrupted
+runtime fails with an install remedy and downloads nothing. Generation works
+offline after installation and uses ddduck's existing Graphviz WASM dependency;
+Chrome is needed only for browser verification, not generation.
+
+The default output is `<product-root>/.ddduck/exports/archify/`. `--out` resolves
+relative to the current directory and must remain inside the invoking repository.
+An existing directory is replaced only when its manifest identifies an atlas from
+this integration. Source validation or rendering failures preserve the previous
+atlas. The bundle includes a graph snapshot, source digest, view hashes and
+ddduck/integration/upstream identities. `--json` emits one result with `root`,
+`output`, `index` and `integration`. `--open` opens the resulting index in the system
+browser; an opening failure reports the already generated path. Browser menus
+provide SVG and PNG export. Publish the entire output directory so its relative
+HTML links remain valid.
+
+This is a static atlas: the grouped complete view does not collapse groups or
+replace them interactively with aggregated nodes. Model summaries and Domain
+details are separate views. Release packaging and a supported-version upgrade
+policy remain follow-up work before advertising a stable integration.
+
+The passport displays the full node description in a wrapping text block before
+the relationship list, outside the metadata chips. Long descriptions can be
+scrolled within that block; canonical IDs remain compact metadata.
+
+### Publishing the framework model
+
+This repository's [Model atlas workflow](../.github/workflows/pages.yml) exports
+`docs/ddd` and deploys the complete output directory to GitHub Pages on pushes to
+`main`, or a manual dispatch on `main`. Feature branches do not deploy. The build
+installs the qualified runtime explicitly and uses the same export command as
+users; a failed build does not replace the deployed site. Deployment uses the
+`github-pages` environment with Pages/OIDC permissions scoped to its deploy job.
+
+GitHub Pages must use **GitHub Actions** as its publishing source in repository
+**Settings → Pages**. The repository's **About → Website** points to
+`https://diegomarino.github.io/ddduck/`. The first deployment happens after this
+workflow and the exporter are integrated into `main`.
+
+Consumer repositories can reuse the workflow with their own `--root` and Website
+URL. Ordinary local export does not modify GitHub settings or publish a site.
+The workflow follows [GitHub's custom Pages deployment guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).

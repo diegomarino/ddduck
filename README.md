@@ -18,6 +18,11 @@ framework's own model:
 
 ![ddduck model graph: the framework's Model, its Domains and owned Concepts, and typed relationships, with a legend](https://raw.githubusercontent.com/diegomarino/ddduck/main/docs/ddd/generated/graph/model-graph.svg)
 
+[Explore the model atlas](https://diegomarino.github.io/ddduck/) for a grouped
+complete view, Model/sublevel diagrams and individual Domain views with the
+Archify viewer. GitHub Pages rebuilds this atlas from canonical source on pushes
+to `main`.
+
 ## Product layout
 
 A consumer product owns one product root. Documentation-centric repositories can use `docs/ddd/`;

@@ -1,0 +1,24 @@
+{
+  "integrationVersion": "0.1.0-experimental",
+  "upstreamVersion": "3.0.1",
+  "commit": "73aaa0696e8f72c232ea710e6fa94fd953f3e773",
+  "files": {
+    "LICENSE": "b799ab081703e7821ae5096d2c1abdf14bbdc75e8ea1c4045998c36ed6db9706",
+    "assets/template.html": "b0b550d644b77cad401bbc4b21375919ef01db45d235122a0ee42b732cb34233",
+    "renderers/shared/atomic-output.mjs": "f804d66d1801ac2dadc9d0a4c334645cfbb7a8cd1a7de112ddfb952c056a580b",
+    "renderers/shared/brand-marks.mjs": "5cfc3c517ca6fe7e867c208101059dd7747ca3de3c9934b17583d6cf20336620",
+    "renderers/shared/cli.mjs": "097f968a614008b07972f56de995e5b933c61ee0ba0d16d967c0a97c6d92e9d7",
+    "renderers/shared/diagnostics.mjs": "d052a0e72eec2a2bf29c70dacdd3350100e2c76fc2627d14f79234077c571e3f",
+    "renderers/shared/engineering-profiles.mjs": "7e99f9d5423f66cc9ab6224da56dc2d5aa6c6faec29178034794e9db6b5b2889",
+    "renderers/shared/generated-brand-marks.mjs": "0f157d229c12df6f53763a3b88684baa5803a52484c49c4d34ec40b8743beea2",
+    "renderers/shared/generated-validators.mjs": "33697207b90a0eb0d0566a1c46eaf3cb58f85cef0f43caeec991017ade34c2b9",
+    "renderers/shared/i18n.mjs": "03f5356110a08b2cf684a484af5502bb392482de1ef61123707c6da2724c5201",
+    "renderers/shared/output-path.mjs": "7422139101abd93493918898a97bed06f2212bfd411d3514cd229b6d57a3797e",
+    "renderers/shared/path-semantics.mjs": "4ef002af9061c06634a07de6d199fd7d13e6c50561c792fd018118bf3e065f52",
+    "renderers/shared/portable-path.mjs": "26130cbcdae9b9f082486aeb5feec9c5fe57905d2ed8e30c8081b9710e2e8ac3",
+    "renderers/shared/repository-evidence.mjs": "19c652af2afec5604e9ce23d356f3cc2c5d6146592531036da20e79f4db3ed1d",
+    "renderers/shared/repository-location.mjs": "9ee8294c39d1be40f5aca3334fdfc7527ef9b224d6c1e69ca57aefc6a8c77856",
+    "renderers/shared/utils.mjs": "422b66c6945de473b1f96e4f3641339b6a24c8ccef60795a38ca2386e10bc26b",
+    "renderers/shared/validator.mjs": "7460d7fcbcdf710649256c5e96142ae26d807a655d3296ee8caf7f5e158622cc"
+  }
+}
