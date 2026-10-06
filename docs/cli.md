@@ -483,6 +483,15 @@ Model summaries and Domain details retain their hierarchical layout as separate
 views. Release packaging and a supported-version upgrade
 policy remain follow-up work before advertising a stable integration.
 
+In the atlas index, **Show guarantees** switches the complete view between the
+full graph and a compact layout without Guarantee nodes or their incident
+connections. The node count and separate-view link follow the selection.
+Domain details retain their guarantees, and source files are never modified by
+this display control. **Model overview** shows only the Model, its Domains, and
+relationships projected between those Domains. UseCases remain in the complete
+graph and relevant Domain details; their participation in a guarantee does not
+assign them to a Domain.
+
 The passport displays the full node description in a wrapping text block before
 the relationship list, outside the metadata chips. Long descriptions can be
 scrolled within that block; canonical IDs remain compact metadata.
