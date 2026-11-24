@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.1...ddduck-v0.5.0) (2026-11-24)
+
+
+### Features
+
+* **config:** discover repository config in .config/, root, and .ddduck/ ([#40](https://github.com/diegomarino/ddduck/issues/40)) ([85d8979](https://github.com/diegomarino/ddduck/commit/85d89796d55db28626c4a5042c42000388a5c040)), closes [#35](https://github.com/diegomarino/ddduck/issues/35)
+* **query:** add --include-relationships to query impact ([#37](https://github.com/diegomarino/ddduck/issues/37)) ([f3780fd](https://github.com/diegomarino/ddduck/commit/f3780fd510eaaff5eb31d40edf32a4523ed53e5a)), closes [#36](https://github.com/diegomarino/ddduck/issues/36)
+
+
+### Bug Fixes
+
+* **archify:** compact complete models and clarify overview ([#32](https://github.com/diegomarino/ddduck/issues/32)) ([17aad32](https://github.com/diegomarino/ddduck/commit/17aad328c678025cfb64a2c816e8b292dbfeafb3))
+
 ## [0.4.1](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.0...ddduck-v0.4.1) (2026-10-06)
 
 
