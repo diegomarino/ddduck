@@ -68,7 +68,9 @@ test("npm pack ships only the public runtime surface", () => {
     });
     assert.equal(result.status, 0, result.stderr);
 
-    const entries = JSON.parse(result.stdout);
+    // npm <= 11 prints an array of packages; npm 12 prints an object keyed by package name.
+    const parsed = JSON.parse(result.stdout);
+    const entries = Array.isArray(parsed) ? parsed : Object.values(parsed);
     assert.equal(entries.length, 1, result.stdout);
     const paths = entries[0].files.map(({ path: filePath }) => filePath).sort();
     const allowedPath =
