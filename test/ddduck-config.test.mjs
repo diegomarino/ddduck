@@ -157,9 +157,15 @@ test("loadDdduckConfig names the actual file in validation errors", () => {
   assert.throws(() => loadDdduckConfig(repo), /^Error: \.config\/ddduck\.yml: schemaVersion must be "1"/);
 });
 
-test("loadDdduckConfig rejects JSONC trailing commas and other parse errors", () => {
+test("loadDdduckConfig accepts JSONC trailing commas, as Prettier writes them", () => {
   const repo = makeRepo();
-  writeAt(repo, "ddduck.config.jsonc", '{ "schemaVersion": "1", "productRoot": "specs", }\n');
+  writeAt(repo, "ddduck.config.jsonc", '{ "schemaVersion": "1", "ignore": ["out",], "productRoot": "specs", }\n');
+  assert.deepEqual(loadDdduckConfig(repo), { schemaVersion: "1", productRoot: "specs", ignore: ["out"] });
+});
+
+test("loadDdduckConfig rejects other JSONC parse errors", () => {
+  const repo = makeRepo();
+  writeAt(repo, "ddduck.config.jsonc", '{ "schemaVersion": "1" "productRoot": "specs" }\n');
   assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.jsonc: invalid JSONC/);
 });
 

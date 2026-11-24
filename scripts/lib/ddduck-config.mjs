@@ -91,7 +91,9 @@ function parseConfigSource(source, relativePath) {
   }
   if (extension === "jsonc") {
     const errors = [];
-    const value = parseJsonc(source, errors, { allowTrailingComma: false, disallowComments: false });
+    // Trailing commas are accepted because Prettier writes them in .jsonc files;
+    // any other parse error fails rather than yielding a partial config.
+    const value = parseJsonc(source, errors, { allowTrailingComma: true, disallowComments: false });
     if (errors.length > 0) {
       const details = errors.map((error) => `${printParseErrorCode(error.error)} at offset ${error.offset}`);
       throw new Error(`${relativePath}: invalid JSONC: ${details.join("; ")}`);
@@ -168,7 +170,8 @@ export function renderInitConfig({ productRoot, ignore = defaultConfigIgnore }) 
     "  // Extra directory names (basenames only, no globs) that every ddduck scanner skips,",
     "  // in addition to dot-directories and node_modules. Use [] to skip nothing extra;",
     "  // remove the key to use the defaults shown here.",
-    `  "ignore": [${ignore.map((entry) => JSON.stringify(entry)).join(", ")}]`,
+    // The trailing comma matches Prettier's default output for .jsonc files.
+    `  "ignore": [${ignore.map((entry) => JSON.stringify(entry)).join(", ")}],`,
     "}",
     "",
   ].join("\n");

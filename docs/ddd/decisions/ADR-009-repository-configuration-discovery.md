@@ -43,8 +43,9 @@ directory; tool-named files (`ddduck.*`) may live in `.config/` or at the root.
   order above; there is no silent precedence. The order exists for documentation and
   diagnostics.
 - All formats share one content contract and validation. Errors name the actual file.
-- `.json` uses native `JSON.parse`. `.jsonc` uses `jsonc-parser` in strict mode: comments
-  are allowed, trailing commas and any other parse error fail. `.yaml`/`.yml` uses `yaml`
+- `.json` uses native `JSON.parse`. `.jsonc` uses `jsonc-parser`: comments and trailing
+  commas are allowed (Prettier writes trailing commas in `.jsonc`, as VS Code and
+  `tsconfig` accept them); any other parse error fails. `.yaml`/`.yml` uses `yaml`
   with strict parsing and unique keys.
 - `--root` overrides `productRoot`; `ignore` still applies, so an invalid or conflicting
   config still fails commands that scan.
@@ -78,7 +79,7 @@ location or format later is additive, but it must keep the single-config rule.
 ## Verification
 
 `test/ddduck-config.test.mjs` covers every location and format, the documented order,
-conflicts (including `.yaml` beside `.yml`), strict JSONC and YAML failures, and the `init`
+conflicts (including `.yaml` beside `.yml`), JSONC trailing commas, JSONC and YAML failures, and the `init`
 location choice. `test/init-config.test.mjs` covers the template, no clobbering of any
 existing location, rollback on a failed write, and a conflict reported by `check --root`.
 

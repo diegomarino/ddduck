@@ -66,7 +66,7 @@ locations, in this documented order:
 
 At most one may exist. Several config files are an error that lists every one of them in
 the order above; ddduck never picks the first silently. `.json` is strict JSON, `.jsonc`
-allows comments but not trailing commas, and `.yaml`/`.yml` is strict YAML with unique keys.
+allows comments and trailing commas, and `.yaml`/`.yml` is strict YAML with unique keys.
 Every format has the same content and validation; errors name the actual file. ADR-009
 records these choices.
 
