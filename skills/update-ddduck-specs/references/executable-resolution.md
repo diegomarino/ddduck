@@ -26,7 +26,7 @@ Probe only the paths listed above plus the paths the request or the repository e
 
 `existing`, `absent`, and `path-collision` are observations, and each one requires an inspection that actually ran. When no probe resolves, that inspection never ran and the model state is `undetermined`.
 
-Report `undetermined`, stop before any mutation, and never downgrade it to `absent`. Only `absent` authorizes initialization, and initializing on an unverified `absent` bootstraps a second product root beside a healthy one. A named `productRoot` in `.ddduck/config.json`, or an existing `product.yaml`, is evidence against `absent` even while the executable remains unresolved.
+Report `undetermined`, stop before any mutation, and never downgrade it to `absent`. Only `absent` authorizes initialization, and initializing on an unverified `absent` bootstraps a second product root beside a healthy one. A named `productRoot` in a repository config file (`.config/ddduck.*`, `ddduck.config.*`, or `.ddduck/config.*`), or an existing `product.yaml`, is evidence against `absent` even while the executable remains unresolved.
 
 ## Remediation
 

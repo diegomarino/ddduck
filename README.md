@@ -87,12 +87,13 @@ ddduck init
 
 `init` presents editable defaults for the product name, Model ID, and product directory.
 Press Enter to accept a value or Ctrl+C to cancel without creating files. Product files go
-inside `ddd/` by default; inside Git, repository configuration goes in `.ddduck/config.json`.
+inside `ddd/` by default; inside Git, `init` writes a commented `ddduck.config.jsonc` (or
+`.config/ddduck.jsonc` when `.config/` exists) at the repository root.
 For scripts, use `ddduck init ddd --id model:<product-id> --yes`; `--yes` accepts defaults
 without prompting and never overwrites a non-empty destination.
 
 `--root <path>` is always the explicit override; without it, ddduck resolves the enclosing
-product root, then `.ddduck/config.json`, then a unique repository candidate (see
+product root, then the repository config file, then a unique repository candidate (see
 [the CLI reference](docs/cli.md#product-root-resolution) for the full order, including the
 example-candidate fallback), and fails with a diagnostic when the choice is ambiguous. The mutation surface is deliberately narrow —
 `generate`, domain/concept/use-case creation, and the `create`/`move`/`split`/`retire` Guarantee lifecycle commands — and every

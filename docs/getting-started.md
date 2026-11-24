@@ -60,9 +60,9 @@ authoring and maintenance. The text result of `init` prints the appropriate
 `ddduck install skill` command; run it to install the skill.
 
 Run the complete Bash block from an empty working directory with `ddduck` on `PATH`, normally
-inside a Git repository: `init` records the repository default in `.ddduck/config.json` at the
-repository root, and without one writes it inside the new product root instead (see
-[the CLI reference](cli.md#product-root-resolution)).
+inside a Git repository: `init` records the repository default in a commented
+`ddduck.config.jsonc` (or `.config/ddduck.jsonc` when `.config/` exists) at the repository root, and without one writes it inside the new product root instead (see
+[the CLI reference](cli.md#repository-configuration)).
 
 ```mermaid
 flowchart LR
