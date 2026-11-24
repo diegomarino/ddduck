@@ -38,12 +38,12 @@ Formatting and lint rule formats are intentionally handled by ADR-003.
 
 Use Node.js as the tooling runtime and standardize on these parsing and validation libraries:
 
-| Concern      | Decision                                 | Role                                                                                                         |
-| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| YAML         | `yaml`                                   | Parse canonical YAML with document-level errors, duplicate-key rejection, and strict-profile checks.         |
-| JSON         | Native `JSON.parse` and `JSON.stringify` | Read schemas and generated JSON artifacts unless streaming or comment-preserving behavior becomes necessary. |
-| JSON Schema  | `ajv` with the draft 2020-12 entrypoint  | Compile and run schemas under strict mode.                                                                   |
-| Markdown AST | `unified` plus `remark-parse`            | Parse narrative Markdown into an AST for verified documentation checks.                                      |
+| Concern      | Decision                                 | Role                                                                                                                                                                                                                |
+| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| YAML         | `yaml`                                   | Parse canonical YAML with document-level errors, duplicate-key rejection, and strict-profile checks.                                                                                                                |
+| JSON         | Native `JSON.parse` and `JSON.stringify` | Read schemas and generated JSON artifacts unless streaming or comment-preserving behavior becomes necessary. [editorial note: amended by ADR-009; repository configuration in `.jsonc` is read with `jsonc-parser`] |
+| JSON Schema  | `ajv` with the draft 2020-12 entrypoint  | Compile and run schemas under strict mode.                                                                                                                                                                          |
+| Markdown AST | `unified` plus `remark-parse`            | Parse narrative Markdown into an AST for verified documentation checks.                                                                                                                                             |
 
 The model checker must use these libraries rather than ad hoc parsers for canonical data.
 
