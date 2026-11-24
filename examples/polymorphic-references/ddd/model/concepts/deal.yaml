@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:deal
+model: model:polymorphic-references
+ownerDomain: domain:deals
+name: Deal
+purpose: Represent a commercial opportunity with one or more parties.

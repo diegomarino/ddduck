@@ -127,6 +127,16 @@
       "mode": null
     },
     {
+      "id": "edge:guarantees|rel:reminder-assigned-to-member|REMINDERS-INV-01",
+      "from": "rel:reminder-assigned-to-member",
+      "to": "REMINDERS-INV-01",
+      "kind": "guarantees",
+      "label": "guarantees",
+      "source": "rel:reminder-assigned-to-member",
+      "relationshipType": null,
+      "mode": null
+    },
+    {
       "id": "edge:owns|domain:members|concept:member",
       "from": "domain:members",
       "to": "concept:member",

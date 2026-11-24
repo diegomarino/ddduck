@@ -1,0 +1,8 @@
+schemaVersion: "1"
+kind: Guarantee
+id: NOTES-INV-01
+model: model:polymorphic-references
+ownerDomain: domain:notes
+classification: invariant
+statement: A note may be about any number of people, organizations, and deals, in any mix; each subject it lists resolves to an existing record.
+status: active

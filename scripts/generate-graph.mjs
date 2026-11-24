@@ -172,6 +172,7 @@ function buildRelationshipEdges(graph, model) {
 function buildReferenceEdges(graph, model) {
   const useCases = asArray(model.useCases).map((useCaseId) => resolveNode(graph, useCaseId));
   const interfaces = [...graph.nodes.values()].filter((node) => node.kind === "DomainInterface");
+  const relationships = asArray(model.relationships).map((relationshipId) => resolveNode(graph, relationshipId));
 
   return [
     ...useCases.flatMap((useCase) => [
@@ -182,6 +183,9 @@ function buildReferenceEdges(graph, model) {
     ]),
     ...interfaces.flatMap((domainInterface) =>
       buildReferenceEdgesFor(graph, domainInterface, domainInterface.guarantees, "guarantees"),
+    ),
+    ...relationships.flatMap((relationship) =>
+      buildReferenceEdgesFor(graph, relationship, relationship.guarantees, "guarantees"),
     ),
   ];
 }

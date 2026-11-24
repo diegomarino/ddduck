@@ -1,0 +1,11 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:notes
+model: model:polymorphic-references
+name: Notes
+purpose: Own free-form notes and what each note is about.
+concepts:
+  - concept:note
+interfaces: []
+guarantees:
+  - NOTES-INV-01

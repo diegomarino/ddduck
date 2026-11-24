@@ -261,9 +261,9 @@ class ProductCheck {
             );
         }
       }
-      if (node.kind === "DomainInterface" || node.kind === "UseCase") {
+      if (node.kind === "DomainInterface" || node.kind === "UseCase" || node.kind === "Relationship") {
         const refs = [
-          ...(node.kind === "DomainInterface" ? asArray(node.guarantees) : []),
+          ...(node.kind === "DomainInterface" || node.kind === "Relationship" ? asArray(node.guarantees) : []),
           ...(node.kind === "UseCase" ? asArray(node.preconditions?.requires) : []),
           ...(node.kind === "UseCase" ? asArray(node.success?.preserves) : []),
           ...(node.kind === "UseCase" ? asArray(node.success?.establishes) : []),

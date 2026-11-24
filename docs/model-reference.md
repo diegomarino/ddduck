@@ -67,7 +67,8 @@ purpose: Describe the concept responsibility.
 ### Relationship
 
 Required: `from`, `to`, `relationshipType`, `mode`, and `ownedBy` (a Domain ID). Optional:
-`name` (a descriptive label), `description`, `constraints`, and `decisions`.
+`name` (a descriptive label), `description`, `constraints`, `guarantees` (active Guarantee
+IDs whose rule governs the relationship), and `decisions`.
 
 ### UseCase
 

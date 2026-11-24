@@ -1,0 +1,12 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:deals
+model: model:polymorphic-references
+name: Deals
+purpose: Own deals and the parties taking part in them.
+concepts:
+  - concept:deal
+  - concept:party
+interfaces: []
+guarantees:
+  - DEALS-INV-01

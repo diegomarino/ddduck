@@ -1,0 +1,17 @@
+schemaVersion: "1"
+kind: Model
+id: model:polymorphic-references
+name: Polymorphic references
+purpose: Show how one field that can point to different kinds of concept is modeled with existing node kinds.
+domains:
+  - domain:contacts
+  - domain:deals
+  - domain:notes
+useCases:
+  - use-case:add-deal-party
+relationships:
+  - rel:party-is-person
+  - rel:party-is-organization
+  - rel:note-about-person
+  - rel:note-about-organization
+  - rel:note-about-deal

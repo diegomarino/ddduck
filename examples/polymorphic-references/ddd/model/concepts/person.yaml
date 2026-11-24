@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:person
+model: model:polymorphic-references
+ownerDomain: domain:contacts
+name: Person
+purpose: Represent an individual that deals and notes can refer to.

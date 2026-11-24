@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:note
+model: model:polymorphic-references
+ownerDomain: domain:notes
+name: Note
+purpose: Record a free-form observation about any number of people, organizations, and deals.

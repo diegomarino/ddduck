@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:note-about-deal
+model: model:polymorphic-references
+from: concept:note
+to: concept:deal
+relationshipType: about
+mode: ordinary-flow
+description: A note about a deal.
+ownedBy: domain:notes
+constraints:
+  - Notes refers to a deal by identity; Deals owns the deal.
+guarantees:
+  - NOTES-INV-01

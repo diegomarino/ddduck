@@ -29,7 +29,7 @@ ddduck query context --id <id> --root <root> --json
 
 `impact` follows reverse ownership and behavioral-reference edges; add `--include-relationships` to also walk Relationship edges backwards, treating those hits as review candidates. `neighbors` returns direct edges; relationships are review candidates, not causal proof. Filter incoming and outgoing edges with `edge.kind === "relationship"` and deduplicate by `edge.id`, because a self-relationship appears in both lists.
 
-When the changed ID is a Relationship, query the relationship record and inspect its `from`, `to`, description, and constraints. `neighbors` matches endpoint IDs, not the Relationship record's own ID.
+When the changed ID is a Relationship, query the relationship record and inspect its `from`, `to`, description, constraints, and guarantees. `neighbors` matches endpoint IDs, not the Relationship record's own ID.
 
 Inspect the before root for removed context; current-root queries cannot reconstruct deleted records. Use the consumer's own bridge for feature traces or delivery references outside the ddduck product root.
 

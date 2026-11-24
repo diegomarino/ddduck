@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:note-about-person
+model: model:polymorphic-references
+from: concept:note
+to: concept:person
+relationshipType: about
+mode: ordinary-flow
+description: A note about a person.
+ownedBy: domain:notes
+constraints:
+  - Notes refers to a person by identity; Contacts owns the person's data.
+guarantees:
+  - NOTES-INV-01

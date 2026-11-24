@@ -62,7 +62,7 @@ decision to model them.
 
 Guarantee IDs are stable. An active Guarantee can be moved, split into existing active
 successors, or retired only when an ADR authorizes that lifecycle transition. Use cases and
-interfaces cannot retain references to non-effective Guarantees.
+interfaces, and relationships cannot retain references to non-effective Guarantees.
 
 ```mermaid
 flowchart LR
@@ -81,6 +81,37 @@ the other when known. Cite accepted decisions through `decisions` where appropri
 The `from`/`to` direction and `ownedBy` record ownership do not by themselves establish
 business authority or organizational influence. Keep unknown collaboration patterns in
 the brief rather than guessing them from a call graph or relationship name.
+
+### Relationship rules: constraints or guarantees
+
+A `Relationship` can carry rules in two places:
+
+- `constraints` is free text for the limits of that one connection: what crosses a
+  boundary, which party constrains the other, what the relationship does not imply.
+- `guarantees` lists Guarantee IDs for rules the product enforces and can show evidence
+  for. Use it when the rule has code or tests behind it, or when several relationships
+  share the rule.
+
+A Relationship has a single `to`. When one field can point to different kinds of concept
+(for example, a party that is either a person or an organization), model one Relationship
+per target and record the shared rule once, as an invariant Guarantee that every sibling
+lists in `guarantees`:
+
+```yaml
+# model/relationships/party-is-person.yaml
+kind: Relationship
+id: rel:party-is-person
+from: concept:party
+to: concept:person
+guarantees: [DEALS-INV-05] # A party references exactly one of a person or an organization.
+```
+
+`check` requires each listed Guarantee to exist and be active. The graph draws a
+`guarantees` edge from the Relationship to each Guarantee, so `query impact` on the
+Guarantee lists every relationship that depends on it. ddduck records the rule and its
+evidence; whether the code honors "exactly one" stays the job of the code's own tests.
+The [polymorphic references example](https://github.com/diegomarino/ddduck/tree/main/examples/polymorphic-references)
+models an exactly-one field and an any-number field this way.
 
 ## Decisions and evidence
 

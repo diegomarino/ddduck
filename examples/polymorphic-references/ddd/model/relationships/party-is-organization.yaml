@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:party-is-organization
+model: model:polymorphic-references
+from: concept:party
+to: concept:organization
+relationshipType: references
+mode: ordinary-flow
+description: A party that is an organization.
+ownedBy: domain:deals
+constraints:
+  - Deals refers to an organization by identity; Contacts owns the organization's data.
+guarantees:
+  - DEALS-INV-01

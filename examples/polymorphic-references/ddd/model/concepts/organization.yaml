@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:organization
+model: model:polymorphic-references
+ownerDomain: domain:contacts
+name: Organization
+purpose: Represent a company or institution that deals and notes can refer to.

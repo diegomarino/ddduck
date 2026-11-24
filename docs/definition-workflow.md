@@ -80,10 +80,11 @@ ddduck query node --id <relationship-id> --root <root> --json
 ddduck query context --id <id> --root <root> --json
 ```
 
-Impact follows reverse owns/requires/preserves/establishes/uses/guarantees edges; add
-`--include-relationships` to also walk explicit relationships backwards.
+Impact follows reverse owns/requires/preserves/establishes/uses/guarantees edges, so impact
+on a Guarantee also lists the relationships that cite it; add `--include-relationships` to
+also walk explicit relationships backwards.
 Neighbors exposes direct incoming/outgoing edges, including explicit relationships. Read
-the relationship record for its type, description, and constraints when needed. These are
+the relationship record for its type, description, constraints, and guarantees when needed. These are
 review candidates requiring judgment; an empty result does not establish absence of risk.
 To select explicit relationships, filter both edge lists by `edge.kind === 'relationship'`
 and deduplicate by `edge.id`; a self-relationship appears in both lists. If the changed ID
