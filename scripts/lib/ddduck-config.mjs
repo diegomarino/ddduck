@@ -8,7 +8,7 @@
  * check. Location order and formats are decided by ADR-009.
  */
 
-import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
+import fs, { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { parse as parseJsonc, printParseErrorCode } from "jsonc-parser";
 import { parseDocument } from "yaml";
@@ -175,6 +175,34 @@ export function renderInitConfig({ productRoot, ignore = defaultConfigIgnore }) 
     "}",
     "",
   ].join("\n");
+}
+
+/**
+ * Write the commented init config selecting productRoot unless a config
+ * already exists in any supported location. A config created concurrently
+ * (for example by a parallel init of a sibling destination) between discovery
+ * and the exclusive write counts as pre-existing, never as a write failure.
+ * @param {string} repositoryRoot - Repository root that holds the config.
+ * @param {string} productRoot - Repository-relative product root to pre-fill.
+ * @returns {{configPath: string, repositoryRoot: string, created: boolean}} Where the config lives and whether it was created.
+ */
+export function writeInitConfigIfAbsent(repositoryRoot, productRoot) {
+  const existing = findDdduckConfigFile(repositoryRoot);
+  if (existing) return { configPath: path.join(repositoryRoot, existing), repositoryRoot, created: false };
+  const configPath = path.join(repositoryRoot, initConfigRelativePath(repositoryRoot));
+  try {
+    // Exclusive create: never overwrite a config another process just wrote.
+    fs.writeFileSync(configPath, renderInitConfig({ productRoot }), { flag: "wx" });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const concurrent = findDdduckConfigFile(repositoryRoot);
+    return {
+      configPath: path.join(repositoryRoot, concurrent ?? path.relative(repositoryRoot, configPath)),
+      repositoryRoot,
+      created: false,
+    };
+  }
+  return { configPath, repositoryRoot, created: true };
 }
 
 /**

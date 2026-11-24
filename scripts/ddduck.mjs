@@ -42,13 +42,7 @@ import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveProductRoot } from "./lib/product-root-resolver.mjs";
 import { resolveInitInput } from "./lib/init-input.mjs";
 import { shellQuote } from "./lib/context-pack.mjs";
-import {
-  findDdduckConfigFile,
-  findRepositoryRoot,
-  initConfigRelativePath,
-  loadDdduckConfig,
-  renderInitConfig,
-} from "./lib/ddduck-config.mjs";
+import { findRepositoryRoot, loadDdduckConfig, writeInitConfigIfAbsent } from "./lib/ddduck-config.mjs";
 import { delegateSkillInstall } from "./lib/skill-delegation.mjs";
 import { updateCli } from "./lib/update-cli.mjs";
 import { runQuery } from "./query-model.mjs";
@@ -766,24 +760,18 @@ function writeYaml(filePath, value) {
 }
 
 /**
- * Write a commented JSONC config at the repository root selecting the new
- * product root, unless a config already exists in any supported location (then
- * it is left untouched). The location follows initConfigRelativePath.
+ * Write the repository config for a freshly published product root unless one
+ * already exists; see writeInitConfigIfAbsent for location and concurrency.
  * @param {string} destination - Absolute path of the freshly published product root.
  * @returns {{configPath: string, repositoryRoot: string, created: boolean}} Where the config lives and whether it was created.
  */
 function writeConfigIfAbsent(destination) {
   const repositoryRoot = findRepositoryRoot(destination);
-  const existing = findDdduckConfigFile(repositoryRoot);
-  if (existing) return { configPath: path.join(repositoryRoot, existing), repositoryRoot, created: false };
-  const configPath = path.join(repositoryRoot, initConfigRelativePath(repositoryRoot));
   const relativeProductRoot = path.relative(repositoryRoot, destination).split(path.sep).join("/");
   // findRepositoryRoot falls back to the destination itself when no enclosing
   // .git exists, which makes the relative path empty; "." keeps productRoot
   // a valid non-empty string that still resolves to the same directory.
-  const productRoot = relativeProductRoot === "" ? "." : relativeProductRoot;
-  writeFileSync(configPath, renderInitConfig({ productRoot }), { flag: "wx" });
-  return { configPath, repositoryRoot, created: true };
+  return writeInitConfigIfAbsent(repositoryRoot, relativeProductRoot === "" ? "." : relativeProductRoot);
 }
 
 function nextActionFor(args) {

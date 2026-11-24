@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileS
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
 import { configCandidates, loadDdduckConfig } from "../scripts/lib/ddduck-config.mjs";
 
@@ -113,4 +113,35 @@ test("check --root reports a conflicting repository config as a validation error
     /repository config: Multiple ddduck configuration files found .*: ddduck\.config\.jsonc, \.ddduck\/config\.json; keep exactly one/,
   );
   assert.doesNotMatch(result.stderr, /at findDdduckConfigFile/);
+});
+
+test("parallel inits of sibling destinations all publish and leave exactly one config", async () => {
+  const repo = makeRepo("ddduck-init-config-race-");
+  const destinations = Array.from({ length: 6 }, (_, index) => `apps/p${index}/ddd`);
+
+  const results = await Promise.all(
+    destinations.map(
+      (destination, index) =>
+        new Promise((resolve, reject) => {
+          const child = spawn(process.execPath, [cli, "init", "--yes", destination, "--id", `model:p${index}`], {
+            cwd: repo,
+          });
+          let stderr = "";
+          child.stderr.setEncoding("utf8");
+          child.stderr.on("data", (chunk) => (stderr += chunk));
+          child.on("error", reject);
+          child.on("close", (status) => resolve({ status, stderr }));
+        }),
+    ),
+  );
+
+  for (const [index, result] of results.entries()) {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(existsSync(path.join(repo, destinations[index], "product.yaml")), true);
+  }
+  assert.deepEqual(
+    configCandidates.filter((candidate) => existsSync(path.join(repo, candidate))),
+    ["ddduck.config.jsonc"],
+  );
+  assert.ok(destinations.includes(loadDdduckConfig(repo).productRoot));
 });

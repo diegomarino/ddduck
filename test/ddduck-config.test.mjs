@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import fs, { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -11,6 +11,7 @@ import {
   initConfigRelativePath,
   loadDdduckConfig,
   resolveConfiguredIgnores,
+  writeInitConfigIfAbsent,
 } from "../scripts/lib/ddduck-config.mjs";
 
 function makeRepo() {
@@ -190,4 +191,33 @@ test("initConfigRelativePath prefers an existing .config/ directory and never pi
   assert.equal(initConfigRelativePath(repo), "ddduck.config.jsonc");
   mkdirSync(path.join(repo, ".config"));
   assert.equal(initConfigRelativePath(repo), ".config/ddduck.jsonc");
+});
+
+test("writeInitConfigIfAbsent treats a config created between discovery and write as pre-existing", (t) => {
+  const repo = makeRepo();
+  const original = fs.writeFileSync;
+  // Simulate a parallel init winning the race: the file appears right before
+  // this process's exclusive write, which then fails with EEXIST.
+  t.mock.method(fs, "writeFileSync", (filePath, data, options) => {
+    if (options?.flag === "wx") original(filePath, '{ "schemaVersion": "1", "productRoot": "other" }\n');
+    return original(filePath, data, options);
+  });
+
+  const result = writeInitConfigIfAbsent(repo, "ddd");
+
+  t.mock.restoreAll();
+  assert.deepEqual(result, {
+    configPath: path.join(repo, "ddduck.config.jsonc"),
+    repositoryRoot: repo,
+    created: false,
+  });
+  assert.equal(loadDdduckConfig(repo).productRoot, "other", "the concurrent config must be left untouched");
+});
+
+test("writeInitConfigIfAbsent still surfaces write failures other than EEXIST", (t) => {
+  const repo = makeRepo();
+  t.mock.method(fs, "writeFileSync", () => {
+    throw Object.assign(new Error("disk full"), { code: "ENOSPC" });
+  });
+  assert.throws(() => writeInitConfigIfAbsent(repo, "ddd"), /disk full/);
 });
