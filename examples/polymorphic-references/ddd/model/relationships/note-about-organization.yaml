@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:note-about-organization
+model: model:polymorphic-references
+from: concept:note
+to: concept:organization
+relationshipType: about
+mode: ordinary-flow
+description: A note about an organization.
+ownedBy: domain:notes
+constraints:
+  - Notes refers to an organization by identity; Contacts owns the organization's data.
+guarantees:
+  - NOTES-INV-01

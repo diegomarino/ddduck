@@ -71,3 +71,33 @@ function snapshotFiles(directory) {
         : [[path.relative(exampleRoot, entryPath), readFileSync(entryPath).toString("base64")]];
     });
 }
+
+const polymorphicRoot = path.join(frameworkRoot, "examples/polymorphic-references/ddd");
+
+test("polymorphic references example shares each cardinality rule through one guarantee", () => {
+  assert.deepEqual(validateProduct(polymorphicRoot).errors, []);
+  const before = snapshotFiles(polymorphicRoot);
+  const run = (args) => {
+    const result = spawnSync(process.execPath, [cli, "query", ...args, "--root", polymorphicRoot, "--json"], {
+      cwd: frameworkRoot,
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return JSON.parse(result.stdout).result;
+  };
+
+  const spec = run(["spec"]);
+  assert.ok(spec.generatedViews.every(({ freshness }) => freshness === "fresh"));
+  const impactOn = (id) => run(["impact", "--id", id]).impacts.map(({ node }) => node.id);
+  assert.deepEqual(
+    impactOn("DEALS-INV-01").filter((id) => id.startsWith("rel:")),
+    ["rel:party-is-organization", "rel:party-is-person"],
+  );
+  assert.deepEqual(
+    impactOn("NOTES-INV-01").filter((id) => id.startsWith("rel:")),
+    ["rel:note-about-deal", "rel:note-about-organization", "rel:note-about-person"],
+  );
+  const outgoing = run(["neighbors", "--id", "concept:party"]).outgoing.map(({ edge }) => edge.id);
+  assert.deepEqual(outgoing.sort(), ["rel:party-is-organization", "rel:party-is-person"]);
+  assert.deepEqual(snapshotFiles(polymorphicRoot), before);
+});

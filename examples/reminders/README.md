@@ -30,11 +30,12 @@ node scripts/ddduck.mjs query impact --id MEMBERS-INV-01 --root examples/reminde
 node scripts/ddduck.mjs query neighbors --id concept:member --root examples/reminders/ddd --json
 node scripts/ddduck.mjs query node --id rel:reminder-assigned-to-member --root examples/reminders/ddd --json
 node scripts/ddduck.mjs query impact --id concept:member --include-relationships --root examples/reminders/ddd --json
+node scripts/ddduck.mjs query impact --id REMINDERS-INV-01 --root examples/reminders/ddd --json
 ```
 
 Impact follows reverse dependency edges; neighbors shows the assignment relationship as a
 review candidate. With `--include-relationships`, impact on the member concept also reaches
-the reminder concept through the `assigns` relationship; without the flag it does not. Inspect its record for meaning, and use the consumer's own bridge to find
+the reminder concept through the `assigns` relationship; without the flag it does not. The assignment relationship lists the invariant that limits assignment to available members in its `guarantees`, so impact on that invariant returns the relationship as well as the use case and interface. Inspect its record for meaning, and use the consumer's own bridge to find
 external feature references. These reads do not execute the refusal case.
 
 For a no-interface model and an unresolved authorization question, see the

@@ -60,7 +60,7 @@ Operation kind: `command`
 
 ## Relationships
 
-- `rel:reminder-assigned-to-member`: `concept:reminder` -> `concept:member` (`assigns`) - A reminder designates a member.
+- `rel:reminder-assigned-to-member`: `concept:reminder` -> `concept:member` (`assigns`) - A reminder designates a member. Guarantees: `REMINDERS-INV-01`.
 
 ## Decisions
 

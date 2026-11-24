@@ -189,6 +189,7 @@ test("query impact reports a stable reverse closure over reference and ownership
     document.result.impacts.map(({ depth, edge, node }) => [depth, edge.id, node.id]),
     [
       [1, "edge:guarantees|interface:create-reminder|REMINDERS-INV-01", "interface:create-reminder"],
+      [1, "edge:guarantees|rel:reminder-assigned-to-member|REMINDERS-INV-01", "rel:reminder-assigned-to-member"],
       [1, "edge:owns|domain:reminders|REMINDERS-INV-01", "domain:reminders"],
       [1, "edge:preserves|use-case:create-reminder|REMINDERS-INV-01", "use-case:create-reminder"],
       [2, "edge:owns|model:members-reminders|domain:reminders", "model:members-reminders"],

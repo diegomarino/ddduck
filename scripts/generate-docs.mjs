@@ -129,7 +129,8 @@ function renderModelOverview(view) {
   for (const relationship of view.relationships) {
     lines.push(
       `- \`${relationship.id}\`: \`${relationship.from}\` -> \`${relationship.to}\` (` +
-        `\`${relationship.relationshipType}\`) - ${relationship.description ?? "Unspecified"}`,
+        `\`${relationship.relationshipType}\`) - ${relationship.description ?? "Unspecified"}` +
+        renderRelationshipGuarantees(relationship.guarantees),
     );
   }
 
@@ -150,6 +151,12 @@ function renderNodeList(lines, title, nodes) {
 function renderGuaranteeReferences(lines, title, ids) {
   const references = asArray(ids);
   lines.push(`- ${title}: ${references.length ? references.map((id) => `\`${id}\``).join(", ") : "none"}`);
+}
+
+// Omitted when empty so overviews of models without the optional field stay byte-identical.
+function renderRelationshipGuarantees(ids) {
+  const references = asArray(ids);
+  return references.length ? ` Guarantees: ${references.map((id) => `\`${id}\``).join(", ")}.` : "";
 }
 
 function renderNodeReferences(lines, title, ids) {

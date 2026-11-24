@@ -1,0 +1,14 @@
+schemaVersion: "1"
+kind: Relationship
+id: rel:party-is-person
+model: model:polymorphic-references
+from: concept:party
+to: concept:person
+relationshipType: references
+mode: ordinary-flow
+description: A party that is a person.
+ownedBy: domain:deals
+constraints:
+  - Deals refers to a person by identity; Contacts owns the person's data.
+guarantees:
+  - DEALS-INV-01

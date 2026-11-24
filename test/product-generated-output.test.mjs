@@ -165,6 +165,16 @@ test("product exports behavioral reference edges and renders interfaces", () => 
         mode: null,
       },
       {
+        id: "edge:guarantees|rel:reminder-assigned-to-member|REMINDERS-INV-01",
+        from: "rel:reminder-assigned-to-member",
+        to: "REMINDERS-INV-01",
+        kind: "guarantees",
+        label: "guarantees",
+        source: "rel:reminder-assigned-to-member",
+        relationshipType: null,
+        mode: null,
+      },
+      {
         id: "edge:preserves|use-case:create-reminder|MEMBERS-INV-01",
         from: "use-case:create-reminder",
         to: "MEMBERS-INV-01",
@@ -221,6 +231,10 @@ test("product exports behavioral reference edges and renders interfaces", () => 
   assert.match(overview, /Operation kind: `command`/);
   assert.match(overview, /- Guarantees: `REMINDERS-INV-01`/);
   assert.match(overview, /- Interfaces: `interface:create-reminder`/);
+  assert.match(
+    overview,
+    /- `rel:reminder-assigned-to-member`: .* - A reminder designates a member\. Guarantees: `REMINDERS-INV-01`\.$/m,
+  );
 });
 
 function copyRemindersFixture() {

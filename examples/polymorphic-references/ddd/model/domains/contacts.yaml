@@ -1,0 +1,11 @@
+schemaVersion: "1"
+kind: Domain
+id: domain:contacts
+model: model:polymorphic-references
+name: Contacts
+purpose: Own the people and organizations other domains refer to.
+concepts:
+  - concept:person
+  - concept:organization
+interfaces: []
+guarantees: []

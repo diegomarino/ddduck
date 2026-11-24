@@ -1,0 +1,12 @@
+schemaVersion: "1"
+kind: UseCase
+id: use-case:add-deal-party
+model: model:polymorphic-references
+name: Add a party to a deal
+goal: Let a seller add a person or an organization as a party to a deal.
+preconditions:
+  requires: []
+success:
+  preserves:
+    - DEALS-INV-01
+  establishes: []

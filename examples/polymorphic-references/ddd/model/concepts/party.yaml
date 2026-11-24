@@ -1,0 +1,7 @@
+schemaVersion: "1"
+kind: Concept
+id: concept:party
+model: model:polymorphic-references
+ownerDomain: domain:deals
+name: Party
+purpose: Represent one side of a deal, which is either a person or an organization.

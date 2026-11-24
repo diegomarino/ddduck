@@ -17,6 +17,7 @@
     "ownedBy": { "type": "string", "pattern": "^domain:" },
     "description": { "type": "string" },
     "constraints": { "type": "array", "items": { "type": "string" } },
+    "guarantees": { "$ref": "evidence-anchor.schema.json#/$defs/guaranteeReferenceArray" },
     "decisions": { "type": "array", "items": { "type": "string", "pattern": "^ADR-[0-9]{3}$" }, "uniqueItems": true }
   }
 }

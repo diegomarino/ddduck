@@ -531,6 +531,7 @@ test("Members and Reminders proving fixture validates with fresh generated outpu
     [
       "edge:establishes|use-case:create-reminder|REMINDERS-AC-01",
       "edge:guarantees|interface:create-reminder|REMINDERS-INV-01",
+      "edge:guarantees|rel:reminder-assigned-to-member|REMINDERS-INV-01",
       "edge:preserves|use-case:create-reminder|MEMBERS-INV-01",
       "edge:preserves|use-case:create-reminder|REMINDERS-INV-01",
       "edge:requires|use-case:create-reminder|MEMBERS-INV-01",
@@ -616,3 +617,66 @@ function runChecker(root, extraArgs = []) {
     encoding: "utf8",
   });
 }
+
+function addGuardedRelationship(root, guarantees) {
+  mkdirSync(path.join(root, "model", "relationships"), { recursive: true });
+  writeFileSync(
+    path.join(root, "model", "relationships", "members-members.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: Relationship",
+      "id: rel:members-members",
+      "model: model:reminders",
+      "from: domain:members",
+      "to: domain:members",
+      "relationshipType: collaboration",
+      "mode: synchronous",
+      "ownedBy: domain:members",
+      "guarantees:",
+      ...guarantees.map((id) => `  - ${id}`),
+    ].join("\n"),
+  );
+  writeFileSync(
+    path.join(root, "product.yaml"),
+    `${readFileSync(path.join(root, "product.yaml"), "utf8")}\nrelationships:\n  - rel:members-members\n`,
+  );
+}
+
+test("product accepts a relationship that lists an active guarantee", () => {
+  const root = writeProduct({ guaranteeStatus: "active" });
+  addGuardedRelationship(root, ["MEMBERS-INV-01"]);
+
+  const result = runChecker(root);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("product rejects a relationship that lists a missing guarantee", () => {
+  const root = writeProduct({ guaranteeStatus: "active" });
+  addGuardedRelationship(root, ["MEMBERS-INV-09"]);
+
+  const result = runChecker(root);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(result.stderr, /model\/relationships\/members-members\.yaml: missing guarantee MEMBERS-INV-09/);
+});
+
+test("product rejects a relationship that lists a retired guarantee", () => {
+  const root = writeProduct({ guaranteeStatus: "retired", lifecycleDecision: "ADR-001" });
+  addGuardedRelationship(root, ["MEMBERS-INV-01"]);
+
+  const result = runChecker(root);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(result.stderr, /model\/relationships\/members-members\.yaml: non-effective guarantee MEMBERS-INV-01/);
+});
+
+test("product rejects relationship guarantees that are not guarantee IDs", () => {
+  const root = writeProduct({ guaranteeStatus: "active" });
+  addGuardedRelationship(root, ["concept:member"]);
+
+  const result = runChecker(root);
+
+  assert.notEqual(result.status, 0, result.stdout);
+  assert.match(result.stderr, /members-members\.yaml.*must match pattern/);
+});

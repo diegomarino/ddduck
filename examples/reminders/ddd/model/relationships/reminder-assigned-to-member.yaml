@@ -8,3 +8,5 @@ relationshipType: assigns
 mode: ordinary-flow
 description: A reminder designates a member.
 ownedBy: domain:reminders
+guarantees:
+  - REMINDERS-INV-01
