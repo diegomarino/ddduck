@@ -36,7 +36,13 @@ export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } 
   }
   const { positionals, options } = parseCommandArgs(args, {
     positionals: { min: 1, max: 1 },
-    options: { id: { value: true, repeatable: true }, root: { value: true }, history: {}, json: {} },
+    options: {
+      id: { value: true, repeatable: true },
+      root: { value: true },
+      history: {},
+      "include-relationships": {},
+      json: {},
+    },
   });
   const [operation] = positionals;
   if (!operation || !["node", "neighbors", "impact", "anchors", "spec", "context"].includes(operation)) {
@@ -46,6 +52,9 @@ export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } 
   const id = ids[0];
   if (operation !== "context" && ids.length > 1) throw new CliUsageError(`query ${operation} accepts exactly one --id`);
   if (operation === "context" && options.history) throw new CliUsageError("query context does not support --history");
+  if (operation !== "impact" && options["include-relationships"]) {
+    throw new CliUsageError(`query ${operation} does not support --include-relationships`);
+  }
   if (operation !== "spec" && !id) throw new CliUsageError(`query ${operation} requires --id <model-node-id>`);
 
   const root = resolveProductRoot({ cwd, explicitRoot: options.root });
@@ -56,7 +65,11 @@ export function runQuery(args, { cwd = process.cwd(), stdout = process.stdout } 
   const document = {
     node: () => queryNode(product, id, { history: options.history }),
     neighbors: () => queryNeighbors(product, id, { history: options.history }),
-    impact: () => queryImpact(product, id, { history: options.history }),
+    impact: () =>
+      queryImpact(product, id, {
+        history: options.history,
+        includeRelationships: options["include-relationships"],
+      }),
     anchors: () => queryAnchors(product, id, { history: options.history }),
     spec: () => querySpec(product, { history: options.history }),
     context: () => resolveContextPack(product, ids),

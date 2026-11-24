@@ -361,6 +361,11 @@ sequenceDiagram
 | `ddduck query spec [--id <model-id>] [--root <root>] [--history] [--json]` | none             | Root, domains, view freshness, and verification commands.               |
 | `ddduck query context --id <id> [--id <id> ...] [--root <root>] [--json]`  | `--id`           | Selected records, touching edges, one-hop summaries, and source digest. |
 
+`impact` also accepts `--include-relationships`, which additionally walks Relationship edges
+backwards (`to` to `from`); those hits carry the edge's `relationshipType`, and the query
+envelope records `includeRelationships: true`. It is opt-in because relationship direction
+alone does not establish dependency. Other operations reject the flag.
+
 `context` accepts one or more distinct, repeatable `--id` options; it rejects `--history`.
 Its selected records are complete, while unselected endpoints appear only as one-hop summaries.
 The command does not recursively expand the perimeter.

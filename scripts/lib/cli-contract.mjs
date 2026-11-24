@@ -134,12 +134,12 @@ export function renderHelp(command, subject) {
     ],
     query: [
       "Syntax: ddduck query <node|neighbors|impact|anchors|spec|context> [options] [--json]",
-      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); --history is false.",
+      "Defaults: --root is the resolved product root (enclosing directory, config, or unique discovery); --history is false; --include-relationships is false.",
       "Writes: nothing.",
       "Success output: exactly one JSON query document.",
       "Exit status: 0 on a resolved query or help; 2 when the product root is busy (operation lock held by a running process, retryable); 1 on invalid input, product, or selection.",
       "JSON: output is always JSON; --json is accepted and has no effect.",
-      "Options: --id <model-node-id> (repeatable for context), --root <product-root>, --history.",
+      "Options: --id <model-node-id> (repeatable for context), --root <product-root>, --history, --include-relationships (impact only: also walk Relationship edges backwards).",
     ],
     diff: [
       "Syntax: ddduck diff --base <previous-product-root> [--root <product-root>] [--json]",
@@ -253,7 +253,8 @@ export function renderHelp(command, subject) {
   if (command === "query" && ["node", "neighbors", "impact", "anchors", "spec", "context"].includes(subject)) {
     const selection = subject === "spec" ? " [--id <model-id>]" : " --id <model-node-id>";
     const history = subject === "context" ? "" : " [--history]";
-    lines[0] = `Syntax: ddduck query ${subject}${selection}${subject === "context" ? " [--id <model-node-id> ...]" : ""} [--root <product-root>]${history} [--json]`;
+    const relationships = subject === "impact" ? " [--include-relationships]" : "";
+    lines[0] = `Syntax: ddduck query ${subject}${selection}${subject === "context" ? " [--id <model-node-id> ...]" : ""} [--root <product-root>]${history}${relationships} [--json]`;
     if (subject === "context") {
       lines = lines.map((line) =>
         line.startsWith("Options:")
