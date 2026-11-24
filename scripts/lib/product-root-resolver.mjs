@@ -1,7 +1,7 @@
 /**
  * Resolves which product root a rootless command addresses, in priority
  * order: explicit --root, the enclosing product root of the cwd, the
- * productRoot pinned in .ddduck/config.json, then repository-wide discovery
+ * productRoot pinned in the repository config, then repository-wide discovery
  * (a unique primary candidate, or a unique example candidate when run inside
  * it; test/ and fixtures/ candidates are ignored, ambiguity is an error).
  * Also owns resolveInitDestination, the init staging-name prefix, and the

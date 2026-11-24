@@ -25,8 +25,8 @@ docs/ddd/
 
 `product.yaml` and `model/**/*.yaml` are canonical. `generated/` is derived output and
 must be regenerated through `ddduck generate` rather than edited directly.
-`.ddduck/config.json` may point commands at the selected root, but `.ddduck/` is tool metadata,
-not product source.
+The repository config file (for example `ddduck.config.jsonc`) may point commands at the selected
+root, but it and `.ddduck/` are tool metadata, not product source.
 
 ## Nodes
 

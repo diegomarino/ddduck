@@ -19,7 +19,7 @@ import remarkParse from "remark-parse";
 import { parseDocument } from "yaml";
 import { detectProductLayout, loadProductNodes, nodeDirectoryKinds } from "./lib/product-layout.mjs";
 import { shouldIgnoreScanEntry } from "./lib/scan-ignore.mjs";
-import { findRepositoryRoot, resolveConfiguredIgnores } from "./lib/ddduck-config.mjs";
+import { defaultConfigIgnore, findRepositoryRoot, resolveConfiguredIgnores } from "./lib/ddduck-config.mjs";
 
 const executableRuleChecks = new Set([
   "concept-owner-domain",
@@ -284,7 +284,15 @@ class ProductCheck {
 
   validateDocumentationReferences() {
     const generatedPrefix = path.join(this.root, "generated") + path.sep;
-    const ignoredEntryNames = resolveConfiguredIgnores(findRepositoryRoot(this.root));
+    let ignoredEntryNames;
+    try {
+      ignoredEntryNames = resolveConfiguredIgnores(findRepositoryRoot(this.root));
+    } catch (error) {
+      // An invalid or conflicting repository config is a reported check error,
+      // not a crash; scan with the defaults so the rest of the report survives.
+      this.addError("repository config", error.message);
+      ignoredEntryNames = [...defaultConfigIgnore];
+    }
     const filePaths = new Set(
       this.documentationRoots
         .flatMap((root) => listMarkdownFiles(root, ignoredEntryNames))

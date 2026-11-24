@@ -132,7 +132,7 @@ test("update-ddduck-specs treats an unresolved executable as undetermined, never
     "When no probe resolves, that inspection never ran and the model state is `undetermined`.",
     "Report `undetermined`, stop before any mutation, and never downgrade it to `absent`.",
     "initializing on an unverified `absent` bootstraps a second product root beside a healthy one",
-    "A named `productRoot` in `.ddduck/config.json`, or an existing `product.yaml`, is evidence against `absent`",
+    "A named `productRoot` in a repository config file (`.config/ddduck.*`, `ddduck.config.*`, or `.ddduck/config.*`), or an existing `product.yaml`, is evidence against `absent`",
   ]) {
     assert.ok(executable.includes(instruction), `missing undetermined instruction: ${instruction}`);
   }

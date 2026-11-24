@@ -4,8 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  configCandidates,
   defaultConfigIgnore,
+  findDdduckConfigFile,
   findRepositoryRoot,
+  initConfigRelativePath,
   loadDdduckConfig,
   resolveConfiguredIgnores,
 } from "../scripts/lib/ddduck-config.mjs";
@@ -87,4 +90,98 @@ test("loadDdduckConfig rejects ignore entries containing backslash", () => {
   const repo = makeRepo();
   writeConfig(repo, { schemaVersion: "1", productRoot: "docs/ddd", ignore: ["a\\b"] });
   assert.throws(() => loadDdduckConfig(repo), /plain directory names/);
+});
+
+function writeAt(repo, relativePath, source) {
+  mkdirSync(path.dirname(path.join(repo, relativePath)), { recursive: true });
+  writeFileSync(path.join(repo, relativePath), source);
+}
+
+const sources = {
+  json: '{ "schemaVersion": "1", "productRoot": "specs", "ignore": ["out"] }\n',
+  jsonc:
+    '// comment\n{\n  "schemaVersion": "1", // inline\n  /* block */ "productRoot": "specs",\n  "ignore": ["out"]\n}\n',
+  yaml: '# comment\nschemaVersion: "1"\nproductRoot: specs\nignore: [out]\n',
+};
+sources.yml = sources.yaml;
+
+test("configCandidates lists .config/, then ddduck.config.*, then .ddduck/ in json, jsonc, yaml, yml order", () => {
+  assert.deepEqual(configCandidates, [
+    ".config/ddduck.json",
+    ".config/ddduck.jsonc",
+    ".config/ddduck.yaml",
+    ".config/ddduck.yml",
+    "ddduck.config.json",
+    "ddduck.config.jsonc",
+    "ddduck.config.yaml",
+    "ddduck.config.yml",
+    ".ddduck/config.json",
+    ".ddduck/config.jsonc",
+    ".ddduck/config.yaml",
+    ".ddduck/config.yml",
+  ]);
+});
+
+for (const candidate of configCandidates) {
+  test(`loadDdduckConfig reads ${candidate}`, () => {
+    const repo = makeRepo();
+    writeAt(repo, candidate, sources[path.extname(candidate).slice(1)]);
+    assert.equal(findDdduckConfigFile(repo), candidate);
+    assert.deepEqual(loadDdduckConfig(repo), { schemaVersion: "1", productRoot: "specs", ignore: ["out"] });
+  });
+}
+
+test("loadDdduckConfig refuses several config files and lists them in documented order", () => {
+  const repo = makeRepo();
+  writeAt(repo, ".ddduck/config.json", sources.json);
+  writeAt(repo, ".config/ddduck.yaml", sources.yaml);
+  assert.throws(
+    () => loadDdduckConfig(repo),
+    (error) =>
+      /Multiple ddduck configuration files found .*: \.config\/ddduck\.yaml, \.ddduck\/config\.json; keep exactly one/.test(
+        error.message,
+      ) && /Merge the settings/.test(error.nextAction),
+  );
+});
+
+test("loadDdduckConfig refuses .yaml and .yml side by side", () => {
+  const repo = makeRepo();
+  writeAt(repo, "ddduck.config.yaml", sources.yaml);
+  writeAt(repo, "ddduck.config.yml", sources.yaml);
+  assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.yaml, ddduck\.config\.yml/);
+});
+
+test("loadDdduckConfig names the actual file in validation errors", () => {
+  const repo = makeRepo();
+  writeAt(repo, ".config/ddduck.yml", 'schemaVersion: "2"\nproductRoot: specs\n');
+  assert.throws(() => loadDdduckConfig(repo), /^Error: \.config\/ddduck\.yml: schemaVersion must be "1"/);
+});
+
+test("loadDdduckConfig rejects JSONC trailing commas and other parse errors", () => {
+  const repo = makeRepo();
+  writeAt(repo, "ddduck.config.jsonc", '{ "schemaVersion": "1", "productRoot": "specs", }\n');
+  assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.jsonc: invalid JSONC/);
+});
+
+test("loadDdduckConfig rejects invalid YAML, duplicate keys, and non-object documents", () => {
+  const repo = makeRepo();
+  writeAt(repo, "ddduck.config.yaml", 'schemaVersion: "1"\nproductRoot: a\nproductRoot: b\n');
+  assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.yaml: invalid YAML/);
+  writeAt(repo, "ddduck.config.yaml", "- just\n- a list\n");
+  assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.yaml: configuration must be an object/);
+});
+
+test("loadDdduckConfig rejects a directory in a config location", () => {
+  const repo = makeRepo();
+  mkdirSync(path.join(repo, "ddduck.config.json"));
+  assert.throws(() => loadDdduckConfig(repo), /ddduck\.config\.json: must be a regular file/);
+});
+
+test("initConfigRelativePath prefers an existing .config/ directory and never picks .ddduck/", () => {
+  const repo = makeRepo();
+  assert.equal(initConfigRelativePath(repo), "ddduck.config.jsonc");
+  mkdirSync(path.join(repo, ".ddduck"));
+  assert.equal(initConfigRelativePath(repo), "ddduck.config.jsonc");
+  mkdirSync(path.join(repo, ".config"));
+  assert.equal(initConfigRelativePath(repo), ".config/ddduck.jsonc");
 });

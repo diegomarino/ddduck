@@ -39,8 +39,8 @@ Product-facing commands accept `--root <product-root>`. When `--root` is omitted
 the root in this order:
 
 1. An enclosing product root found by walking upward from the current directory.
-2. `.ddduck/config.json` `productRoot`, when present and the current directory is not inside a
-   product root.
+2. The repository config `productRoot` (see [Repository configuration](#repository-configuration)),
+   when present and the current directory is not inside a product root.
 3. A unique primary `product.yaml` candidate under the repository boundary.
 4. A relevant example candidate only when no primary candidate exists.
 
@@ -54,26 +54,47 @@ viable primary roots
 fail and ask for `--root`, listing every candidate and flagging any that fail validation; the
 resolver never uses an arbitrary first match.
 
-Use `.ddduck/config.json` for a repository default:
+### Repository configuration
 
-```json
+A repository default lives in one config file at the repository root (the nearest ancestor
+containing `.git`; without one, the directory being resolved). ddduck looks for these
+locations, in this documented order:
+
+1. `.config/ddduck.json`, `.config/ddduck.jsonc`, `.config/ddduck.yaml`, `.config/ddduck.yml`
+2. `ddduck.config.json`, `ddduck.config.jsonc`, `ddduck.config.yaml`, `ddduck.config.yml`
+3. `.ddduck/config.json`, `.ddduck/config.jsonc`, `.ddduck/config.yaml`, `.ddduck/config.yml`
+
+At most one may exist. Several config files are an error that lists every one of them in
+the order above; ddduck never picks the first silently. `.json` is strict JSON, `.jsonc`
+allows comments but not trailing commas, and `.yaml`/`.yml` is strict YAML with unique keys.
+Every format has the same content and validation; errors name the actual file. ADR-009
+records these choices.
+
+```jsonc
 {
+  // Configuration format version. Must be "1".
   "schemaVersion": "1",
+  // Default product root, relative to the repository root. --root always overrides it.
   "productRoot": "docs/ddd",
-  "ignore": ["vendor", "target", "build", "dist", "__pycache__"]
+  // Extra directory names every ddduck scanner skips.
+  "ignore": ["vendor", "target", "build", "dist", "__pycache__"],
 }
 ```
 
 `ignore` lists extra directory names (basenames only, no globs) that
 every ddduck scanner skips, in addition to the always-skipped dot-directories
 and `node_modules`. Omit the key to accept the defaults shown above; set it to
-`[]` to skip nothing beyond the built-in defaults. `ddduck init` writes this
-file pre-filled when it does not already exist and reports the write in its result
-(`config: <path> (created)` in text, `configPath` in `--json`; omitted when the file
-pre-existed). The config is written at the enclosing repository root (the nearest ancestor
-containing `.git`); without one, at the destination directory itself, so the file then lives
-inside the new product root with `"productRoot": "."`. When the file already exists and selects a different product root, `init` prints a
-standard-error note that the repository default still selects that other root.
+`[]` to skip nothing beyond the built-in defaults. `--root` overrides `productRoot`, but
+`ignore` still applies, so an invalid or conflicting config still fails a command that scans.
+
+When no config exists, `ddduck init` writes a commented JSONC template that documents every
+option: `.config/ddduck.jsonc` when the repository already has a `.config/` directory,
+otherwise `ddduck.config.jsonc`. It never creates `.ddduck/` only for configuration. `init`
+reports the write in its result (`config: <path> (created)` in text, `configPath` in
+`--json`; omitted when a config pre-existed). Without an enclosing `.git`, the file lives
+inside the new product root with `"productRoot": "."`. When a config already exists and
+selects a different product root, `init` prints a standard-error note that the repository
+default still selects that other root.
 
 ## Common behavior
 
@@ -425,7 +446,7 @@ ddduck export archify [--root <product-root>] [--out <directory>] [--open] [--js
 ```
 
 These commands are always advertised by `--help`, including before installation.
-Help does not read `.ddduck/config.json` or load an installed runtime. Existing
+Help does not read the repository config or load an installed runtime. Existing
 commands work independently of Archify. After installation, the installer prints
 `Next: ddduck export archify --open`.
 
