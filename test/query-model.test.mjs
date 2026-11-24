@@ -230,6 +230,56 @@ test("query impact protects a stable traversal from cycles", () => {
   );
 });
 
+test("query impact omits Relationship edges unless --include-relationships is passed", () => {
+  const plain = runDdd(["query", "impact", "--id", "concept:member", "--root", provingFixture, "--json"]);
+  assert.equal(plain.status, 0, plain.stderr);
+  const plainDocument = JSON.parse(plain.stdout);
+  assert.deepEqual(plainDocument.query, { operation: "impact", id: "concept:member", history: false });
+  assert.equal(
+    plainDocument.result.impacts.some(({ edge }) => edge.kind === "relationship"),
+    false,
+  );
+
+  const result = runDdd([
+    "query",
+    "impact",
+    "--id",
+    "concept:member",
+    "--include-relationships",
+    "--root",
+    provingFixture,
+    "--json",
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  const document = JSON.parse(result.stdout);
+  assert.deepEqual(document.query, {
+    operation: "impact",
+    id: "concept:member",
+    history: false,
+    includeRelationships: true,
+  });
+  const hit = document.result.impacts.find(({ edge }) => edge.id === "rel:reminder-assigned-to-member");
+  assert.deepEqual(
+    { depth: hit.depth, kind: hit.edge.kind, relationshipType: hit.edge.relationshipType, node: hit.node.id },
+    { depth: 1, kind: "relationship", relationshipType: "assigns", node: "concept:reminder" },
+  );
+  assert.ok(document.result.impacts.length > plainDocument.result.impacts.length);
+});
+
+test("query rejects --include-relationships outside impact", () => {
+  const result = runDdd([
+    "query",
+    "neighbors",
+    "--id",
+    "concept:member",
+    "--include-relationships",
+    "--root",
+    provingFixture,
+  ]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /query neighbors does not support --include-relationships/);
+});
+
 test("query anchors preserves declared anchor text and makes absent evidence explicit", () => {
   const result = runDdd(["query", "anchors", "--id", "interface:create-reminder", "--root", provingFixture, "--json"]);
 

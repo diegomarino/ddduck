@@ -144,17 +144,22 @@ export function queryNeighbors(product, id, { history = false } = {}) {
 /**
  * Answer `query impact`: breadth-first walk of everything that depends on the
  * node, following owns/requires/preserves/establishes/uses/guarantees edges
- * backwards, with each hit tagged by depth.
+ * backwards, with each hit tagged by depth. With includeRelationships, standalone
+ * Relationship edges are also walked backwards (to -> from); their hits carry the
+ * edge's relationshipType. Relationship direction alone does not establish
+ * dependency, so this stays opt-in.
  * @param {object} product - Product from loadQueryProduct.
  * @param {string} id - Model node ID.
- * @param {{history?: boolean}} [options] - Echoed into the query envelope.
+ * @param {{history?: boolean, includeRelationships?: boolean}} [options] - Echoed into the query envelope.
  * @returns {object} The query document.
  */
-export function queryImpact(product, id, { history = false } = {}) {
+export function queryImpact(product, id, { history = false, includeRelationships = false } = {}) {
+  const extra = includeRelationships ? { includeRelationships: true } : {};
+  const followed = includeRelationships ? new Set([...impactEdgeKinds, "relationship"]) : impactEdgeKinds;
   const node = product.nodes.get(id);
   if (!node) {
     const lifecycleRedirect = product.lifecycleRedirects.get(id);
-    if (lifecycleRedirect) return envelope(product, "impact", id, history, { lifecycleRedirect });
+    if (lifecycleRedirect) return envelope(product, "impact", id, history, { lifecycleRedirect }, extra);
     throw unknownModelNodeError(product, id);
   }
 
@@ -165,7 +170,7 @@ export function queryImpact(product, id, { history = false } = {}) {
   while (frontier.length > 0) {
     depth += 1;
     const candidates = frontier
-      .flatMap((targetId) => product.edges.filter((edge) => edge.to === targetId && impactEdgeKinds.has(edge.kind)))
+      .flatMap((targetId) => product.edges.filter((edge) => edge.to === targetId && followed.has(edge.kind)))
       .sort(byId);
     const next = [];
     for (const edge of candidates) {
@@ -177,10 +182,7 @@ export function queryImpact(product, id, { history = false } = {}) {
     frontier = next.sort();
   }
 
-  return envelope(product, "impact", id, history, {
-    source: summarizeNode(node, product.sourcePaths),
-    impacts,
-  });
+  return envelope(product, "impact", id, history, { source: summarizeNode(node, product.sourcePaths), impacts }, extra);
 }
 
 /**
@@ -247,10 +249,10 @@ export function querySpec(product, { history = false } = {}) {
   });
 }
 
-function envelope(product, operation, id, history, result) {
+function envelope(product, operation, id, history, result, queryOptions = {}) {
   return {
     schemaVersion: "1",
-    query: { operation, id, history },
+    query: { operation, id, history, ...queryOptions },
     rootModelId: product.rootModelId,
     result,
     diagnostics: [],

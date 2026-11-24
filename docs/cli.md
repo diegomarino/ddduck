@@ -352,14 +352,19 @@ sequenceDiagram
   Note over CLI,Caller: Read-only; no source or generated output is written
 ```
 
-| Command                                                                    | Required options | Result                                                                  |
-| -------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
-| `ddduck query node --id <id> [--root <root>] [--history] [--json]`         | `--id`           | Full canonical node and product-relative source path.                   |
-| `ddduck query neighbors --id <id> [--root <root>] [--history] [--json]`    | `--id`           | Deterministically sorted incoming and outgoing edges.                   |
-| `ddduck query impact --id <id> [--root <root>] [--history] [--json]`       | `--id`           | Reverse impact closure over ownership and behavioral references.        |
-| `ddduck query anchors --id <id> [--root <root>] [--history] [--json]`      | `--id`           | Evidence, reachable decisions, policies, and view freshness.            |
-| `ddduck query spec [--id <model-id>] [--root <root>] [--history] [--json]` | none             | Root, domains, view freshness, and verification commands.               |
-| `ddduck query context --id <id> [--id <id> ...] [--root <root>] [--json]`  | `--id`           | Selected records, touching edges, one-hop summaries, and source digest. |
+| Command                                                                                        | Required options | Result                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `ddduck query node --id <id> [--root <root>] [--history] [--json]`                             | `--id`           | Full canonical node and product-relative source path.                   |
+| `ddduck query neighbors --id <id> [--root <root>] [--history] [--json]`                        | `--id`           | Deterministically sorted incoming and outgoing edges.                   |
+| `ddduck query impact --id <id> [--root <root>] [--history] [--include-relationships] [--json]` | `--id`           | Reverse impact closure over ownership and behavioral references.        |
+| `ddduck query anchors --id <id> [--root <root>] [--history] [--json]`                          | `--id`           | Evidence, reachable decisions, policies, and view freshness.            |
+| `ddduck query spec [--id <model-id>] [--root <root>] [--history] [--json]`                     | none             | Root, domains, view freshness, and verification commands.               |
+| `ddduck query context --id <id> [--id <id> ...] [--root <root>] [--json]`                      | `--id`           | Selected records, touching edges, one-hop summaries, and source digest. |
+
+`impact` also accepts `--include-relationships`, which additionally walks Relationship edges
+backwards (`to` to `from`); those hits carry the edge's `relationshipType`, and the query
+envelope records `includeRelationships: true`. It is opt-in because relationship direction
+alone does not establish dependency. Other operations reject the flag.
 
 `context` accepts one or more distinct, repeatable `--id` options; it rejects `--history`.
 Its selected records are complete, while unselected endpoints appear only as one-hop summaries.
