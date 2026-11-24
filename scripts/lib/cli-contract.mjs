@@ -109,9 +109,9 @@ export function renderHelp(command, subject) {
     init: [
       "Syntax: ddduck init [destination] [--name <name>] [--id model:<product-id>] [--yes] [--json]",
       "Defaults: editable prompts for product name, Model ID, and destination; Enter accepts each value and Ctrl+C cancels without creating files. Explicit arguments skip their prompts.",
-      "Defaults: name is the repository directory name (current directory outside Git), or the explicit ID slug; ID is model:<normalized-name>; destination is the productRoot configured in .ddduck/config.json, else ddd under the current directory.",
+      "Defaults: name is the repository directory name (current directory outside Git), or the explicit ID slug; ID is model:<normalized-name>; destination is the productRoot of the repository config, else ddd under the current directory.",
       "Automation: --yes accepts defaults without prompting; required without an interactive terminal and with --json. It never overwrites a non-empty destination.",
-      "Writes: product.yaml, model/, decisions/, and generated views inside the destination; .ddduck/config.json at the repository root if absent, or inside the new product root outside Git.",
+      "Writes: product.yaml, model/, decisions/, and generated views inside the destination; a commented repository config (.config/ddduck.jsonc when .config/ exists, else ddduck.config.jsonc) at the repository root if no config exists, or inside the new product root outside Git.",
       "Success output: a text summary with full paths, Model ID, configuration location when created, the next command, and a recommendation to install the coding-agent skill in the product repository.",
       "Exit status: 0 on success or help; nonzero if input is invalid or the destination is not empty.",
       "JSON: --json emits the same result as one JSON object.",

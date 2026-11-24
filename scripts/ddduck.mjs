@@ -42,7 +42,7 @@ import { resolveContainedOutput } from "./lib/product-paths.mjs";
 import { initStagingPrefix, resolveProductRoot } from "./lib/product-root-resolver.mjs";
 import { resolveInitInput } from "./lib/init-input.mjs";
 import { shellQuote } from "./lib/context-pack.mjs";
-import { defaultConfigIgnore, findRepositoryRoot, loadDdduckConfig } from "./lib/ddduck-config.mjs";
+import { findRepositoryRoot, loadDdduckConfig, writeInitConfigIfAbsent } from "./lib/ddduck-config.mjs";
 import { delegateSkillInstall } from "./lib/skill-delegation.mjs";
 import { updateCli } from "./lib/update-cli.mjs";
 import { runQuery } from "./query-model.mjs";
@@ -213,8 +213,8 @@ async function install(args) {
 /**
  * Implement `ddduck init`: build a new product root (canonical directories,
  * product.yaml, all generated views) in a PID-stamped staging directory beside
- * the destination, then publish it atomically via rename and write
- * .ddduck/config.json if absent.
+ * the destination, then publish it atomically via rename and write the
+ * repository config if absent.
  * @param {string[]} args - Arguments after the `init` command word.
  * @returns {Promise<{result: object, json: boolean}>} The operation result and whether --json was requested.
  */
@@ -273,8 +273,8 @@ async function initialize(args) {
     try {
       config = writeConfigIfAbsent(destination);
     } catch (error) {
-      // Writing the config is the final publish step. If it fails (for example a
-      // regular file already occupies the .ddduck config path), roll back the
+      // Writing the config is the final publish step. If it fails (for example the
+      // config directory is not writable), roll back the
       // freshly published product directory so a corrected retry is not refused
       // by the non-empty-directory guard above.
       rmSync(destination, { recursive: true, force: true });
@@ -760,26 +760,18 @@ function writeYaml(filePath, value) {
 }
 
 /**
- * Write .ddduck/config.json at the repository root selecting the new product
- * root, unless a config already exists (then it is left untouched).
+ * Write the repository config for a freshly published product root unless one
+ * already exists; see writeInitConfigIfAbsent for location and concurrency.
  * @param {string} destination - Absolute path of the freshly published product root.
  * @returns {{configPath: string, repositoryRoot: string, created: boolean}} Where the config lives and whether it was created.
  */
 function writeConfigIfAbsent(destination) {
   const repositoryRoot = findRepositoryRoot(destination);
-  const configPath = path.join(repositoryRoot, ".ddduck", "config.json");
-  if (existsSync(configPath)) return { configPath, repositoryRoot, created: false };
   const relativeProductRoot = path.relative(repositoryRoot, destination).split(path.sep).join("/");
   // findRepositoryRoot falls back to the destination itself when no enclosing
   // .git exists, which makes the relative path empty; "." keeps productRoot
   // a valid non-empty string that still resolves to the same directory.
-  const productRoot = relativeProductRoot === "" ? "." : relativeProductRoot;
-  mkdirSync(path.dirname(configPath), { recursive: true });
-  writeFileSync(
-    configPath,
-    `${JSON.stringify({ schemaVersion: "1", productRoot, ignore: [...defaultConfigIgnore] }, null, 2)}\n`,
-  );
-  return { configPath, repositoryRoot, created: true };
+  return writeInitConfigIfAbsent(repositoryRoot, relativeProductRoot === "" ? "." : relativeProductRoot);
 }
 
 function nextActionFor(args) {

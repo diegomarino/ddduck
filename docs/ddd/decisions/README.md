@@ -24,3 +24,4 @@ Imported evidence is intentionally not part of the canonical project structure. 
 - [ADR-006 - Product Model And Framework Contract Planes](ADR-006-product-model-and-framework-contract-planes.md)
 - [ADR-007 - Guarantee Lifecycle Decision Anchoring](ADR-007-guarantee-lifecycle-decision-anchoring.md)
 - [ADR-008 - Delivery Adapter Boundary And Context Pack](ADR-008-delivery-adapter-boundary-and-seed.md)
+- [ADR-009 - Repository Configuration Discovery](ADR-009-repository-configuration-discovery.md)

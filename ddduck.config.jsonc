@@ -1,0 +1,15 @@
+// ddduck repository configuration. Keep exactly one ddduck config file per repository.
+// Reference: https://github.com/diegomarino/ddduck/blob/main/docs/cli.md#product-root-resolution
+{
+  // Configuration format version. Must be "1".
+  "schemaVersion": "1",
+
+  // Default product root, relative to the repository root. Used when --root is omitted
+  // and the current directory is not inside a product root. --root always overrides it.
+  "productRoot": "docs/ddd",
+
+  // Extra directory names (basenames only, no globs) that every ddduck scanner skips,
+  // in addition to dot-directories and node_modules. Use [] to skip nothing extra;
+  // remove the key to use the defaults shown here.
+  "ignore": ["vendor", "target", "build", "dist", "__pycache__"],
+}

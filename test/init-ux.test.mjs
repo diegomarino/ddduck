@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import test from "node:test";
+import { loadDdduckConfig } from "../scripts/lib/ddduck-config.mjs";
 import { PassThrough } from "node:stream";
 import { setImmediate } from "node:timers";
 import { parse } from "yaml";
@@ -36,7 +37,9 @@ test("init --yes infers identity from the repository and keeps source inside ddd
   const product = parse(readFileSync(path.join(root, "ddd", "product.yaml"), "utf8"));
   assert.equal(product.name, "My App");
   assert.equal(product.id, "model:my-app");
-  assert.equal(JSON.parse(readFileSync(path.join(root, ".ddduck", "config.json"))).productRoot, "ddd");
+  assert.equal(loadDdduckConfig(root).productRoot, "ddd");
+  assert.equal(existsSync(path.join(root, "ddduck.config.jsonc")), true);
+  assert.equal(existsSync(path.join(root, ".ddduck")), false);
   assert.equal(existsSync(path.join(root, "ddd", "generated", "graph", "model-graph.svg")), true);
 });
 

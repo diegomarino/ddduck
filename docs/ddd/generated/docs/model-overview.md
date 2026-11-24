@@ -177,3 +177,4 @@ Show a reviewer what changed between independently valid versions of a Model and
 - `ADR-006`
 - `ADR-007`
 - `ADR-008`
+- `ADR-009`

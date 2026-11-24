@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
+import { configCandidates } from "../scripts/lib/ddduck-config.mjs";
 import { setTimeout as delay } from "node:timers/promises";
 import { renderSkillsAddCommand } from "../scripts/lib/skill-delegation.mjs";
 
@@ -484,7 +485,7 @@ test("init reports canonical and generated paths in text and JSON", () => {
   ]) {
     assert.ok(textResult.stdout.includes(path.join(realpathSync(textDestination), entry)));
   }
-  assert.ok(textResult.stdout.includes(path.join(textDestination, ".ddduck", "config.json")));
+  assert.ok(textResult.stdout.includes(path.join(textDestination, "ddduck.config.jsonc")));
   assert.match(textResult.stdout, /Next: .*\n  ddduck generate --root/);
 
   const jsonDestination = mkdtempSync(path.join(tmpdir(), "ddduck-init-result-json-"));
@@ -503,7 +504,7 @@ test("init reports canonical and generated paths in text and JSON", () => {
       "generated/graph/model-graph.ndjson",
       "generated/graph/model-graph.svg",
     ],
-    configPath: path.join(jsonDestination, ".ddduck", "config.json"),
+    configPath: path.join(jsonDestination, "ddduck.config.jsonc"),
   });
 });
 
@@ -902,7 +903,7 @@ test("check beside a broken second product names the config-pinned root it valid
 
 test("init reports the repository config write and points at a pinned default on a second init", () => {
   const repository = makeRepositoryShell("ddduck-init-config-report-");
-  const configPath = path.join(realpathSync(repository), ".ddduck", "config.json");
+  const configPath = path.join(realpathSync(repository), "ddduck.config.jsonc");
 
   const first = runDdd(["init", "--yes", "apps/a/ddd", "--id", "model:alpha"], repository);
   assert.equal(first.status, 0, first.stderr);
@@ -921,7 +922,7 @@ test("init reports the repository config write and points at a pinned default on
   assert.equal(jsonResult.status, 0, jsonResult.stderr);
   assert.equal(
     JSON.parse(jsonResult.stdout).configPath,
-    path.join(realpathSync(jsonRepository), ".ddduck", "config.json"),
+    path.join(realpathSync(jsonRepository), "ddduck.config.jsonc"),
   );
 
   const preExisting = runDdd(["init", "--yes", "other", "--id", "model:beta", "--json"], jsonRepository);
@@ -1809,6 +1810,8 @@ function makeRepositoryShell(prefix) {
 }
 
 function writeRepositoryConfig(repository, productRoot) {
+  // Replace whatever config init wrote: two config files are a conflict.
+  for (const candidate of configCandidates) rmSync(path.join(repository, candidate), { force: true });
   mkdirSync(path.join(repository, ".ddduck"), { recursive: true });
   writeFileSync(
     path.join(repository, ".ddduck", "config.json"),

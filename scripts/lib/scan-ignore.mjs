@@ -11,7 +11,7 @@ export const defaultIgnoredEntryNames = Object.freeze(["node_modules"]);
  * Decide whether a scanner should skip a directory/file entry: dot-entries,
  * known dependency directories, and product-declared extra ignores.
  * @param {string} name - The entry's basename.
- * @param {string[]} [extraNames] - Extra names from .ddduck/config.json ignore.
+ * @param {string[]} [extraNames] - Extra names from the repository config ignore list.
  * @returns {boolean} True when the entry must be skipped.
  */
 export function shouldIgnoreScanEntry(name, extraNames = []) {
