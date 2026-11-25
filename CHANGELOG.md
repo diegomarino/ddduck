@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.5.0...ddduck-v0.6.0) (2026-11-25)
+
+
+### Features
+
+* **check:** name unknown fields and suggest upgrading ddduck ([#45](https://github.com/diegomarino/ddduck/issues/45)) ([5748a16](https://github.com/diegomarino/ddduck/commit/5748a16c8bab73983d609f4e9d155a0462522483))
+* **check:** validate example products against their own models ([#44](https://github.com/diegomarino/ddduck/issues/44)) ([9082b4f](https://github.com/diegomarino/ddduck/commit/9082b4fe65af7e0c77ecb37b1475bbbb83a396bd))
+* **model:** let relationships reference guarantees ([#42](https://github.com/diegomarino/ddduck/issues/42)) ([294290d](https://github.com/diegomarino/ddduck/commit/294290d096b40611cd36274f430675837dcb714b))
+
 ## [0.5.0](https://github.com/diegomarino/ddduck/compare/ddduck-v0.4.1...ddduck-v0.5.0) (2026-11-24)
 
 
