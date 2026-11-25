@@ -540,7 +540,7 @@ export function validationFailureError(root, errors) {
   } else if (errors.some((line) => line.startsWith("guarantee disappeared from the product"))) {
     error.nextAction =
       "Restore the guarantee record from the base product, or record the transition with ddduck retire or ddduck split, then re-run ddduck check.";
-  } else if (unknownFields.length > 0) {
+  } else if (unknownFields.length > 0 && !errors.some((line) => retentionBlockerPattern.test(line))) {
     error.nextAction =
       `Remove or rename the unknown field${unknownFields.length === 1 ? "" : "s"} ${unknownFields.join(", ")} in the listed source files; ` +
       `if the model was written for a newer ddduck, upgrade ddduck (installed: ${installedDdduckVersion()}) and retry.`;
@@ -549,6 +549,11 @@ export function validationFailureError(root, errors) {
   }
   return error;
 }
+
+// Base-retention diagnostics from validateGuaranteeHistory other than a
+// disappeared guarantee. Fixing an unknown field cannot unblock them, so they
+// keep the generic action instead of the unknown-field one.
+const retentionBlockerPattern = /: (?:illegal guarantee status transition|closed guarantee must keep) |^base: /;
 
 // Matches the checker's named unknown-field schema diagnostic (see
 // schemaErrorMessage in check-model.mjs) and captures the quoted field name.
