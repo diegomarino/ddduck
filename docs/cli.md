@@ -215,6 +215,15 @@ interrupted operation
 live owning process); running any mutation, such as `ddduck generate`, reclaims that leftover
 state.
 
+A field the installed schemas do not define is reported by name — for example
+`model/relationships/x.yaml: schema validation failed at /: unknown field "guarantees" (must NOT
+have additional properties)` — because it usually means the model was written for a newer
+ddduck ([ADR-005](ddd/decisions/ADR-005-model-format-evolution-and-additive-compatibility.md)). Whenever such a line is present, `check` and every command
+that validates the product before writing end with
+`Next: Remove or rename the unknown field "<field>" in the listed source files; if the model was
+written for a newer ddduck, upgrade ddduck (installed: <version>) and retry.`, unless a
+lifecycle-reference or retention blocker takes precedence.
+
 ## `generate`
 
 ```text

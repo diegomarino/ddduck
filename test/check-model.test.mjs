@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { schemaErrorMessage } from "../scripts/check-model.mjs";
+import { validationFailureError } from "../scripts/lib/product-operation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const frameworkProductRoot = path.join(root, "docs", "ddd");
@@ -15,6 +17,21 @@ test("canonical product validates", () => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, "");
+});
+
+test("schema error messages name unknown fields and keep the ajv phrase", () => {
+  assert.equal(
+    schemaErrorMessage({
+      keyword: "additionalProperties",
+      message: "must NOT have additional properties",
+      params: { additionalProperty: "guarantees" },
+    }),
+    'unknown field "guarantees" (must NOT have additional properties)',
+  );
+  assert.equal(
+    schemaErrorMessage({ keyword: "pattern", message: 'must match pattern "^domain:"', params: {} }),
+    'must match pattern "^domain:"',
+  );
 });
 
 test("canonical product check reports details with verbose output", () => {
@@ -126,3 +143,18 @@ function runChecker(checkRoot, extraArgs = []) {
     encoding: "utf8",
   });
 }
+
+test("unknown-field next action yields to retention blockers it cannot unblock", () => {
+  const unknown =
+    'model/relationships/a-b.yaml: schema validation failed at /: unknown field "sla" (must NOT have additional properties)';
+  assert.match(validationFailureError("ddd", [unknown]).nextAction, /unknown field "sla".*upgrade ddduck/);
+  for (const blocker of [
+    "model/guarantees/a-inv-01.yaml: illegal guarantee status transition retired -> active",
+    "model/guarantees/a-inv-01.yaml: closed guarantee must keep lifecycleDecision ADR-001 from base",
+    "model/guarantees/a-inv-01.yaml: closed guarantee must keep successors A-INV-02 from base",
+  ]) {
+    const { nextAction } = validationFailureError("ddd", [unknown, blocker]);
+    assert.doesNotMatch(nextAction, /unknown field/, blocker);
+    assert.match(nextAction, /Fix the listed source files/, blocker);
+  }
+});
