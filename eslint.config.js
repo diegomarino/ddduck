@@ -3,7 +3,7 @@ export default [
     ignores: ["node_modules/**", "coverage/**", "generated/**"],
   },
   {
-    files: ["scripts/**/*.mjs", "test/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "tools/**/*.mjs", "test/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

@@ -4,6 +4,11 @@ This guide is the framework maintainer surface: the working gate, the agent-read
 the revision-scoped FR-to-code audits, and the framework contracts. Consumer-facing command
 contracts live in [the CLI reference](cli.md).
 
+`scripts/` holds only the published runtime: everything in it is reachable from the
+`ddduck` bin, and `test/package-identity.test.mjs` fails otherwise. Maintainer-only tools
+(the eval runner, the readiness report, the FR-to-code audit, and the examples gate) live
+in `tools/`, which is not published.
+
 ## Working gate
 
 `npm install` installs the local Husky `commit-msg` hook. It validates Conventional
@@ -19,7 +24,7 @@ to enable the hook locally.
   (`scripts/check-model.mjs --root docs/ddd --docs-root docs/ddd --docs-root . --docs-exclude examples`,
   so documentation references are enforced repository-wide against the self-model, except
   under `examples/`).
-- `check:examples` — `scripts/check-examples.mjs` validates every `examples/<name>/ddd` that
+- `check:examples` — `tools/check-examples.mjs` validates every `examples/<name>/ddd` that
   holds a `product.yaml` and requires its generated views to be fresh. Markdown under
   `examples/<name>/` (outside `ddd/generated/`) is checked against that example's own
   product, so an example README can cite its own IDs in prose.
@@ -38,7 +43,7 @@ The deterministic eval pack validates query-grounded structured evidence; it doe
 generate prose. Regenerate its result snapshot with:
 
 ```bash
-node scripts/run-agent-readiness-evals.mjs \
+node tools/run-agent-readiness-evals.mjs \
   --input test/evals/agent-readable-product-specs.jsonl \
   --repo-root . \
   --output test/evals/agent-readable-product-specs.result.json
@@ -50,7 +55,7 @@ input. To inspect readiness issues for an explicit product root, generate the ca
 report with:
 
 ```bash
-node scripts/generate-agent-readiness-report.mjs --root examples/reminders/ddd
+node tools/generate-agent-readiness-report.mjs --root examples/reminders/ddd
 ```
 
 Readiness establishes structural validity, available evidence roles, and valid links; it does
@@ -70,14 +75,14 @@ The published example proof is limited to `FR-005#ordinary-member-list`: the def
 admin archived-member management tab.
 
 ```text
-node scripts/audit-fr-to-code.mjs \
+node tools/audit-fr-to-code.mjs \
   --input examples/audit-reports/members-ordinary-list.yaml \
   --source-root source:example-app=<local-checkout> \
   --json
 ```
 
 Audit record structure is declared by
-[`schemas/fr-to-code-audit.schema.json`](../schemas/fr-to-code-audit.schema.json);
+[`tools/schemas/fr-to-code-audit.schema.json`](../tools/schemas/fr-to-code-audit.schema.json);
 `verifyFrToCodeAudit` remains the normative semantic validator on top of it.
 
 The report's three possible verdicts are `realized-and-tested`, `realized-untested`, and

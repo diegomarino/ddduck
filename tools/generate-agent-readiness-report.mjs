@@ -25,7 +25,7 @@ try {
 
 function parseArgs(args) {
   if (args.length !== 2 || args[0] !== "--root" || !args[1] || args[1].startsWith("--")) {
-    throw new Error("usage: node scripts/generate-agent-readiness-report.mjs --root <product-root>");
+    throw new Error("usage: node tools/generate-agent-readiness-report.mjs --root <product-root>");
   }
   return path.resolve(args[1]);
 }

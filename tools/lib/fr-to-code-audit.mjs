@@ -1,7 +1,7 @@
 /**
  * Verification core for FR-to-code audit records, shared by the
  * audit-fr-to-code CLI and its tests. Validates a record against
- * schemas/fr-to-code-audit.schema.json, checks the requirement ID (and traced
+ * tools/schemas/fr-to-code-audit.schema.json, checks the requirement ID (and traced
  * guarantee) appear in the pinned requirement source, confirms every
  * production/test anchor's line range exists and digests its excerpt
  * (sha256), and enforces verdict consistency (realized-and-tested,
@@ -16,7 +16,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 
 const auditSchema = JSON.parse(
   readFileSync(
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../schemas/fr-to-code-audit.schema.json"),
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../schemas/fr-to-code-audit.schema.json"),
     "utf8",
   ),
 );

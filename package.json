@@ -50,7 +50,7 @@
     "check:graph": "node scripts/check-generated-graph.mjs",
     "check:graph:svg": "node scripts/check-generated-graph-svg.mjs",
     "check:model": "node scripts/check-model.mjs --root docs/ddd --docs-root docs/ddd --docs-root . --docs-exclude examples",
-    "check:examples": "node scripts/check-examples.mjs",
+    "check:examples": "node tools/check-examples.mjs",
     "format:check": "prettier --check .",
     "generate:docs": "node scripts/generate-docs.mjs",
     "generate:graph": "node scripts/generate-graph.mjs",

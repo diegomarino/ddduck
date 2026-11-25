@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -100,6 +100,14 @@ test("npm pack ships only the public runtime surface", () => {
     assert.ok(paths.includes("skills/update-ddduck-specs/SKILL.md"));
     assert.ok(paths.includes("skills/update-ddduck-specs/references/modeling-and-evidence.md"));
     assert.ok(paths.includes("skills/update-ddduck-specs/references/reviewing-changes.md"));
+    assert.ok(!paths.some((filePath) => filePath.startsWith("tools/")));
+    // Every published script must be part of the runtime: reachable from the bin
+    // entry point. Maintainer-only tools live in tools/, which is not published.
+    const runtime = runtimeScriptClosure(path.join(root, packageJson.bin.ddduck));
+    assert.deepEqual(
+      paths.filter((filePath) => filePath.startsWith("scripts/") && !runtime.has(filePath)),
+      [],
+    );
     assert.ok(paths.includes("skills/update-ddduck-specs/references/authoring-and-verification.md"));
     assert.ok(paths.includes("schemas/product/model.schema.json"));
     assert.ok(paths.includes("policies/policy-spec.schema.json"));
@@ -134,3 +142,29 @@ test("shipped scripts import only runtime dependencies or node builtins", () => 
   walk(path.join(root, "scripts"));
   assert.deepEqual(offenders, []);
 });
+
+// Relative module imports (static and dynamic) plus string literals naming an
+// existing file below scripts/ (spawned scripts, JSON data), followed
+// transitively from the entry point. Returns repo-relative POSIX paths.
+function runtimeScriptClosure(entryPoint) {
+  const scriptsRoot = path.join(root, "scripts");
+  const reached = new Set();
+  const pending = [entryPoint];
+  while (pending.length > 0) {
+    const filePath = pending.pop();
+    const relativePath = path.relative(root, filePath).split(path.sep).join("/");
+    if (reached.has(relativePath)) continue;
+    reached.add(relativePath);
+    if (!filePath.endsWith(".mjs")) continue;
+    const source = readFileSync(filePath, "utf8");
+    for (const [, specifier] of source.matchAll(/["'](\.{1,2}\/[^"'\s]+|[\w-]+(?:\/[\w-]+)*\.(?:mjs|json))["']/g)) {
+      const candidates = [path.resolve(path.dirname(filePath), specifier), path.resolve(scriptsRoot, specifier)];
+      const target = candidates.find(
+        (candidate) =>
+          candidate.startsWith(scriptsRoot + path.sep) && existsSync(candidate) && statSync(candidate).isFile(),
+      );
+      if (target) pending.push(target);
+    }
+  }
+  return reached;
+}

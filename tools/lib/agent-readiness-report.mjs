@@ -7,8 +7,8 @@
  * Consumed by generate-agent-readiness-report.mjs.
  */
 
-import { validateProduct } from "../check-model.mjs";
-import { loadQueryProduct, queryAnchors, querySpec } from "./product-query.mjs";
+import { validateProduct } from "../../scripts/check-model.mjs";
+import { loadQueryProduct, queryAnchors, querySpec } from "../../scripts/lib/product-query.mjs";
 
 const ownershipKinds = new Set(["Concept", "DomainInterface", "Guarantee"]);
 
