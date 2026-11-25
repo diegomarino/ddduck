@@ -158,7 +158,10 @@ class ProductCheck {
       }
       if (!validator(node)) {
         for (const error of validator.errors ?? [])
-          this.addError(node.id, `schema validation failed at ${error.instancePath || "/"}: ${error.message}`);
+          this.addError(
+            node.id,
+            `schema validation failed at ${error.instancePath || "/"}: ${schemaErrorMessage(error)}`,
+          );
       }
     }
   }
@@ -444,6 +447,21 @@ class ProductCheck {
   addError(id, message) {
     this.errors.push(`${this.nodeFiles.get(id) ? path.relative(this.root, this.nodeFiles.get(id)) : id}: ${message}`);
   }
+}
+
+/**
+ * Render one ajv error for a checker diagnostic. An unknown field is named
+ * explicitly, since it is the usual symptom of a model written for a newer
+ * ddduck (ADR-005: fail explicitly on an unsupported contract); ajv's own
+ * phrase is kept in parentheses so existing matchers still apply.
+ * @param {{ keyword: string, message?: string, params?: Record<string, unknown> }} error - One ajv error object.
+ * @returns {string} Message text for the diagnostic.
+ */
+export function schemaErrorMessage(error) {
+  if (error.keyword === "additionalProperties" && typeof error.params?.additionalProperty === "string") {
+    return `unknown field ${JSON.stringify(error.params.additionalProperty)} (${error.message})`;
+  }
+  return error.message;
 }
 
 function listFiles(directory, pattern) {

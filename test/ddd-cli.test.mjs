@@ -1537,6 +1537,55 @@ test("validation failures point at the listed source files, not the CLI input", 
   assert.doesNotMatch(checked.stderr, /correct the input/);
 });
 
+test("an unknown field is named and the next action suggests removing it or upgrading ddduck", () => {
+  const destination = makeProductFixture();
+  const { version } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+  mkdirSync(path.join(destination, "model", "relationships"), { recursive: true });
+  writeFileSync(
+    path.join(destination, "model", "relationships", "members-reminders.yaml"),
+    [
+      'schemaVersion: "1"',
+      "kind: Relationship",
+      "id: rel:members-reminders",
+      "model: model:sample",
+      "from: domain:members",
+      "to: domain:reminders",
+      "relationshipType: customer-supplier",
+      "mode: synchronous",
+      "ownedBy: domain:members",
+      "futureField: true",
+      "",
+    ].join("\n"),
+  );
+  const diagnostic =
+    /model\/relationships\/members-reminders\.yaml: schema validation failed at \/: unknown field "futureField" \(must NOT have additional properties\)/;
+  const nextAction = new RegExp(
+    `Next: Remove or rename the unknown field "futureField" in the listed source files; if the model was written for a newer ddduck, upgrade ddduck \\(installed: ${version.replaceAll(".", "\\.")}\\) and retry\\.`,
+  );
+
+  const checked = runDdd(["check", "--root", destination, "--source-only"]);
+  assert.equal(checked.status, 1, checked.stderr);
+  assert.match(checked.stderr, diagnostic);
+  assert.match(checked.stderr, nextAction);
+
+  const created = runDdd([
+    "create",
+    "domain",
+    "--root",
+    destination,
+    "--id",
+    "domain:billing",
+    "--name",
+    "Billing",
+    "--purpose",
+    "Bill members.",
+  ]);
+  assert.equal(created.status, 1, created.stderr);
+  assert.match(created.stderr, diagnostic);
+  assert.match(created.stderr, nextAction);
+  assert.equal(existsSync(path.join(destination, "model", "domains", "billing.yaml")), false);
+});
+
 test("a blocked lifecycle transition names the referencing file and the edit-generate-retry path", () => {
   const destination = makeProductFixture();
   createGuarantee(destination, "MEMBERS-INV-01", "domain:members");
