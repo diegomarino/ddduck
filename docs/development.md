@@ -16,8 +16,13 @@ to enable the hook locally.
 `npm run check` is the gate that must pass before committing. It runs, in order:
 
 - `check:model` — validates the canonical self-model at `docs/ddd`
-  (`scripts/check-model.mjs --root docs/ddd --docs-root docs/ddd --docs-root .`, so
-  documentation references are enforced repository-wide).
+  (`scripts/check-model.mjs --root docs/ddd --docs-root docs/ddd --docs-root . --docs-exclude examples`,
+  so documentation references are enforced repository-wide against the self-model, except
+  under `examples/`).
+- `check:examples` — `scripts/check-examples.mjs` validates every `examples/<name>/ddd` that
+  holds a `product.yaml` and requires its generated views to be fresh. Markdown under
+  `examples/<name>/` (outside `ddd/generated/`) is checked against that example's own
+  product, so an example README can cite its own IDs in prose.
 - `check:docs` — verifies the generated Markdown views are fresh.
 - `check:graph` — verifies the generated graph views are fresh.
 - `check:graph:svg` — verifies the generated graph SVG is fresh.

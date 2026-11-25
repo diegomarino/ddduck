@@ -15,11 +15,10 @@ A Relationship has a single `to`. Model one Relationship per possible target, an
 the rule that ties the siblings together once, as an invariant Guarantee that every
 sibling lists in `guarantees`:
 
-```text
-party  rel:party-is-person, rel:party-is-organization          DEALS-INV-01  exactly one of the targets
-note   rel:note-about-person, rel:note-about-organization,     NOTES-INV-01  any number, in any mix
-       rel:note-about-deal
-```
+| Field | Relationships                                                                 | Guarantee      | Rule                       |
+| ----- | ----------------------------------------------------------------------------- | -------------- | -------------------------- |
+| party | `rel:party-is-person`, `rel:party-is-organization`                            | `DEALS-INV-01` | exactly one of the targets |
+| note  | `rel:note-about-person`, `rel:note-about-organization`, `rel:note-about-deal` | `NOTES-INV-01` | any number, in any mix     |
 
 Each relationship keeps `constraints` for what only that connection says: which domain
 owns the data on the other side of the boundary. The cardinality rule lives in the
@@ -42,7 +41,7 @@ node scripts/ddduck.mjs query neighbors --id concept:party --root examples/polym
 node scripts/ddduck.mjs query impact --id concept:person --include-relationships --root examples/polymorphic-references/ddd --json
 ```
 
-Impact on the party invariant returns both party relationships and the use case that
+Impact on the party invariant `DEALS-INV-01` returns both party relationships and the use case that
 preserves it. Neighbors of the party concept lists one outgoing relationship per target.
 With `--include-relationships`, impact on the person concept reaches both the party and
 the note concepts.
