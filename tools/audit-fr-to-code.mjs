@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
 import { verifyFrToCodeAudit } from "./lib/fr-to-code-audit.mjs";
-import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "./lib/cli-contract.mjs";
+import { CliUsageError, parseCommandArgs, renderHelp, writeCliError } from "../scripts/lib/cli-contract.mjs";
 
 /**
  * Parse arguments, verify the audit record against its pinned sources, and
