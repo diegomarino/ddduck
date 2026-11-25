@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { runAgentReadinessEvals } from "./lib/agent-readiness-evals.mjs";
-import { resolveContainedOutput } from "./lib/product-paths.mjs";
+import { resolveContainedOutput } from "../scripts/lib/product-paths.mjs";
 
 try {
   const options = parseArgs(process.argv.slice(2));
@@ -41,7 +41,7 @@ function parseArgs(args) {
     const argument = args[index];
     if (!["--input", "--repo-root", "--output"].includes(argument)) {
       throw new Error(
-        "usage: node scripts/run-agent-readiness-evals.mjs --input <jsonl> --repo-root <path> [--output <json>]",
+        "usage: node tools/run-agent-readiness-evals.mjs --input <jsonl> --repo-root <path> [--output <json>]",
       );
     }
     if (Object.hasOwn(options, argument)) throw new Error(`duplicate CLI argument: ${argument}`);
@@ -52,7 +52,7 @@ function parseArgs(args) {
   }
   if (!options["--input"] || !options["--repo-root"]) {
     throw new Error(
-      "usage: node scripts/run-agent-readiness-evals.mjs --input <jsonl> --repo-root <path> [--output <json>]",
+      "usage: node tools/run-agent-readiness-evals.mjs --input <jsonl> --repo-root <path> [--output <json>]",
     );
   }
   return {

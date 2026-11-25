@@ -5,11 +5,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { checkExamples, listExampleProducts } from "../scripts/check-examples.mjs";
+import { checkExamples, listExampleProducts } from "../tools/check-examples.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const examplesRoot = path.join(root, "examples");
-const script = path.join(root, "scripts", "check-examples.mjs");
+const script = path.join(root, "tools", "check-examples.mjs");
 
 function copyExample(name) {
   const temporaryExamples = mkdtempSync(path.join(tmpdir(), "ddduck-examples-"));

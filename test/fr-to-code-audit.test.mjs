@@ -8,12 +8,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { parse, stringify } from "yaml";
-import { verifyFrToCodeAudit } from "../scripts/lib/fr-to-code-audit.mjs";
+import { verifyFrToCodeAudit } from "../tools/lib/fr-to-code-audit.mjs";
 
 const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const auditCli = path.join(frameworkRoot, "scripts", "audit-fr-to-code.mjs");
+const auditCli = path.join(frameworkRoot, "tools", "audit-fr-to-code.mjs");
 const auditSchema = JSON.parse(
-  readFileSync(path.join(frameworkRoot, "schemas", "fr-to-code-audit.schema.json"), "utf8"),
+  readFileSync(path.join(frameworkRoot, "tools", "schemas", "fr-to-code-audit.schema.json"), "utf8"),
 );
 const validateAuditStructure = new Ajv2020({ allErrors: true, strict: true }).compile(auditSchema);
 const expectedVerificationScope = {

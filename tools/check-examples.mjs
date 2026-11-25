@@ -14,10 +14,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateProduct } from "./check-model.mjs";
-import { checkGeneratedDocs } from "./check-generated-docs.mjs";
-import { checkGeneratedGraph } from "./check-generated-graph.mjs";
-import { checkGeneratedGraphSvg } from "./check-generated-graph-svg.mjs";
+import { validateProduct } from "../scripts/check-model.mjs";
+import { checkGeneratedDocs } from "../scripts/check-generated-docs.mjs";
+import { checkGeneratedGraph } from "../scripts/check-generated-graph.mjs";
+import { checkGeneratedGraphSvg } from "../scripts/check-generated-graph-svg.mjs";
 
 const defaultExamplesRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "examples");
 

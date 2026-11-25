@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { runAgentReadinessEvals } from "../scripts/lib/agent-readiness-evals.mjs";
-import { generateAgentReadinessReport } from "../scripts/lib/agent-readiness-report.mjs";
+import { runAgentReadinessEvals } from "../tools/lib/agent-readiness-evals.mjs";
+import { generateAgentReadinessReport } from "../tools/lib/agent-readiness-report.mjs";
 
 const frameworkRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cli = path.join(frameworkRoot, "scripts", "run-agent-readiness-evals.mjs");
-const reportCli = path.join(frameworkRoot, "scripts", "generate-agent-readiness-report.mjs");
+const cli = path.join(frameworkRoot, "tools", "run-agent-readiness-evals.mjs");
+const reportCli = path.join(frameworkRoot, "tools", "generate-agent-readiness-report.mjs");
 const committedEvalPack = path.join(frameworkRoot, "test", "evals", "agent-readable-product-specs.jsonl");
 const committedEvalSnapshot = path.join(frameworkRoot, "test", "evals", "agent-readable-product-specs.result.json");
 const referenceProduct = path.join(frameworkRoot, "examples", "reminders", "ddd");

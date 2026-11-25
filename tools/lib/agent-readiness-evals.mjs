@@ -11,8 +11,8 @@
 
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { runQuery } from "../query-model.mjs";
-import { loadQueryProduct } from "./product-query.mjs";
+import { runQuery } from "../../scripts/query-model.mjs";
+import { loadQueryProduct } from "../../scripts/lib/product-query.mjs";
 
 const supportedOperations = new Set(["node", "neighbors", "impact", "anchors", "spec", "context"]);
 const shellText = /[\n\r;&|`$()<>\\]/;
