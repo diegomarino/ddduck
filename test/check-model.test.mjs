@@ -102,6 +102,24 @@ test("documentation reference scan honors a product ignore list that overrides d
   assert.match(result.stderr, /dist\/b\.md: missing documentation reference domain:not-real/);
 });
 
+test("--docs-exclude skips a subtree of a documentation root", () => {
+  const repo = mkdtempSync(path.join(tmpdir(), "ddduck-docs-exclude-"));
+  mkdirSync(path.join(repo, "docs"), { recursive: true });
+  cpSync(frameworkProductRoot, path.join(repo, "docs", "ddd"), { recursive: true });
+  mkdirSync(path.join(repo, "examples", "demo"), { recursive: true });
+  writeFileSync(path.join(repo, "examples", "demo", "README.md"), "Cites `domain:not-real`.\n");
+  writeFileSync(path.join(repo, "README.md"), "Cites `domain:also-not-real`.\n");
+  const args = ["--docs-root", path.join(repo, "docs", "ddd"), "--docs-root", repo];
+
+  const unscoped = runChecker(path.join(repo, "docs", "ddd"), args);
+  assert.match(unscoped.stderr, /examples\/demo\/README\.md: missing documentation reference domain:not-real/);
+
+  const excluded = runChecker(path.join(repo, "docs", "ddd"), [...args, "--docs-exclude", path.join(repo, "examples")]);
+  assert.notEqual(excluded.status, 0);
+  assert.doesNotMatch(excluded.stderr, /examples\/demo/);
+  assert.match(excluded.stderr, /README\.md: missing documentation reference domain:also-not-real/);
+});
+
 function runChecker(checkRoot, extraArgs = []) {
   return spawnSync(process.execPath, [checker, "--root", checkRoot, ...extraArgs], {
     cwd: root,

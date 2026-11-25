@@ -6,7 +6,9 @@
  * ownership, decisions), evidence anchors, guarantee lifecycle rules, and the
  * executable policy checks (ownership, documentation model-reference
  * resolution). With --base it also enforces guarantee history retention against
- * a previous product root. Exports validateProduct for the operation runner,
+ * a previous product root. --docs-exclude (repeatable) removes a subtree from
+ * the documentation scan, so a repository-wide docs root can leave nested
+ * example products to be validated against their own models. Exports validateProduct for the operation runner,
  * query loader, and root resolver; runs standalone as a CLI (exit 1 on errors).
  */
 
@@ -53,6 +55,12 @@ function parseArgs(args) {
       index += 1;
       continue;
     }
+    if (arg === "--docs-exclude") {
+      if (!parsed.docsExcludes) parsed.docsExcludes = [];
+      parsed.docsExcludes.push(args[index + 1]);
+      index += 1;
+      continue;
+    }
     if (arg === "--source-only") {
       parsed.sourceOnly = true;
       continue;
@@ -74,11 +82,18 @@ function parseArgs(args) {
  * counting nodes, references, and executed policies for the verbose summary.
  */
 class ProductCheck {
-  constructor(rootPath, frameworkPath, basePath, documentationRoots, { sourceOnly = false } = {}) {
+  constructor(
+    rootPath,
+    frameworkPath,
+    basePath,
+    documentationRoots,
+    { sourceOnly = false, documentationExcludes = [] } = {},
+  ) {
     this.root = rootPath;
     this.frameworkRoot = frameworkPath;
     this.baseRoot = basePath;
     this.documentationRoots = documentationRoots;
+    this.documentationExcludes = documentationExcludes;
     this.sourceOnly = sourceOnly;
     this.layout = detectProductLayout(rootPath);
     this.nodes = new Map();
@@ -295,7 +310,7 @@ class ProductCheck {
     }
     const filePaths = new Set(
       this.documentationRoots
-        .flatMap((root) => listMarkdownFiles(root, ignoredEntryNames))
+        .flatMap((root) => listMarkdownFiles(root, ignoredEntryNames, this.documentationExcludes))
         .filter((filePath) => !this.sourceOnly || !filePath.startsWith(generatedPrefix)),
     );
     for (const filePath of [...filePaths].sort()) {
@@ -463,13 +478,16 @@ function listFiles(directory, pattern) {
  * superpowers doc areas.
  * @param {string} rootPath - Documentation root to walk.
  * @param {string[]} [ignoredEntryNames] - Extra directory names to skip (from .ddduck config).
+ * @param {string[]} [excludedPaths] - Absolute directories whose subtrees are skipped (a scanned root itself is never skipped).
  * @returns {string[]} Sorted absolute Markdown file paths.
  */
-function listMarkdownFiles(rootPath, ignoredEntryNames = []) {
+function listMarkdownFiles(rootPath, ignoredEntryNames = [], excludedPaths = []) {
   const files = [];
+  const excluded = new Set(excludedPaths);
 
   function walk(directory) {
     if (directory !== rootPath && existsSync(path.join(directory, "product.yaml"))) return;
+    if (directory !== rootPath && excluded.has(directory)) return;
     let entries;
     try {
       entries = readdirSync(directory, { withFileTypes: true });
@@ -549,17 +567,21 @@ function executePolicyChecks(check, checksToRun, { includeDocumentation = true }
 /**
  * Validate a product root and return the completed check (inspect `.errors`).
  * @param {string} rootPath - Product root to validate.
- * @param {{baseRoot?: string, includeDocumentation?: boolean, documentationRoots?: string[], sourceOnly?: boolean}} [options] - Base product for history retention, documentation scope, and whether generated docs are scanned.
+ * @param {{baseRoot?: string, includeDocumentation?: boolean, documentationRoots?: string[], documentationExcludes?: string[], sourceOnly?: boolean}} [options] - Base product for history retention, documentation scope (roots to scan and subtrees to skip), and whether generated docs are scanned.
  * @returns {ProductCheck} The finished check with errors and counters.
  */
 export function validateProduct(
   rootPath,
-  { baseRoot, includeDocumentation = true, documentationRoots, sourceOnly = false } = {},
+  { baseRoot, includeDocumentation = true, documentationRoots, documentationExcludes = [], sourceOnly = false } = {},
 ) {
   const root = path.resolve(rootPath);
   const basePath = baseRoot ? path.resolve(baseRoot) : undefined;
   const docsRoots = documentationRoots?.map((docsRoot) => path.resolve(docsRoot)) ?? [root];
-  return new ProductCheck(root, defaultFrameworkRoot, basePath, docsRoots, { sourceOnly }).run({
+  const docsExcludes = documentationExcludes.map((excluded) => path.resolve(excluded));
+  return new ProductCheck(root, defaultFrameworkRoot, basePath, docsRoots, {
+    sourceOnly,
+    documentationExcludes: docsExcludes,
+  }).run({
     includeDocumentation,
   });
 }
@@ -569,6 +591,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const check = validateProduct(options.root ?? process.cwd(), {
     baseRoot: options.base,
     documentationRoots: options.docsRoots,
+    documentationExcludes: options.docsExcludes,
     sourceOnly: options.sourceOnly ?? false,
   });
   if (check.errors.length === 0) {
